@@ -1,0 +1,48 @@
+name: Docker build
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - compose.yaml
+      - package.json
+      - package-lock.json
+      - next.config.ts
+      - public/**
+      - src/**
+      - .github/workflows/docker-build.yml
+  push:
+    branches: [main, master]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - compose.yaml
+      - package.json
+      - package-lock.json
+      - next.config.ts
+      - public/**
+      - src/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --tag cyber-divination:ci .
+
+      - name: Inspect runtime user
+        run: |
+          test "$(docker image inspect cyber-divination:ci --format '{{.Config.User}}')" = "nextjs"

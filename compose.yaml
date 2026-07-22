@@ -1,0 +1,70 @@
+name: cyber-divination
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cyber-divination:local
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      AUTH_SECRET: ${AUTH_SECRET:-local-compose-auth-secret-change-before-production}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_METHOD: ${AUTH_METHOD:-credentials}
+      AUTH_ALLOW_DEV_LOGIN: ${AUTH_ALLOW_DEV_LOGIN:-1}
+      DATABASE_URL: ${DATABASE_URL:-postgres://cyber:cyber@db:5432/cyber_divination}
+      CLOUD_STORE_DRIVER: ${CLOUD_STORE_DRIVER:-postgres}
+      # 本地 compose 已用 migrate.sql 初始化；生产部署前执行 npm run db:migrate
+      # DB_SKIP_ENSURE_SCHEMA: "1"
+      SHARE_STORE_DRIVER: ${SHARE_STORE_DRIVER:-local}
+      RATE_LIMIT_DRIVER: ${RATE_LIMIT_DRIVER:-memory}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app_data:/app/data
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cyber}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cyber}
+      POSTGRES_DB: ${POSTGRES_DB:-cyber_divination}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/lib/db/migrate.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cyber} -d ${POSTGRES_DB:-cyber_divination}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  app_data:
+  postgres_data:

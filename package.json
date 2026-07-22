@@ -1,0 +1,42 @@
+{
+  "name": "cyber-divination",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync:skill": "node scripts/sync-bazi-skill.mjs",
+    "compare:iztro": "node scripts/compare-iztro.mjs",
+    "check": "npm run lint -- --max-warnings=8 && npm test && npm run build",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "check:prod-env": "node scripts/validate-prod-env.mjs",
+    "docker:build": "docker build -t cyber-divination:local .",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.0",
+    "lunar-javascript": "^1.7.7",
+    "next": "16.2.10",
+    "postgres": "^3.4.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

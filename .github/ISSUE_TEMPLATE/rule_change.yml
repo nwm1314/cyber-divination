@@ -1,0 +1,55 @@
+﻿name: Divination rule change
+description: Propose a Bazi, Ziwei, or Liuyao rule correction or extension
+title: "[Rule] "
+labels: ["rule-review"]
+body:
+  - type: dropdown
+    id: art
+    attributes:
+      label: System
+      options:
+        - Bazi
+        - Ziwei
+        - Liuyao
+    validations:
+      required: true
+  - type: input
+    id: school
+    attributes:
+      label: School or rule system
+      placeholder: "Example: Ziping, Sanhe, Jingfang Najia"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current rule and problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed rule
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources and editions
+      description: Include title, chapter, edition, or a reproducible comparison tool.
+    validations:
+      required: true
+  - type: textarea
+    id: cases
+    attributes:
+      label: Golden cases and expected differences
+    validations:
+      required: true
+  - type: checkboxes
+    id: versioning
+    attributes:
+      label: Versioning confirmation
+      options:
+        - label: I evaluated whether engineVersion or ruleSetVersion must change
+          required: true
+

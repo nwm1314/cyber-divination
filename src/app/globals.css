@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+:root {
+  --background: #07080c;
+  --foreground: #e8e6e0;
+  --muted: #8b8680;
+  --surface: #12141c;
+  --surface-elevated: #1a1d28;
+  --border: #2a2e3a;
+  --gold: #d4a84b;
+  --gold-dim: #9a7b2f;
+  --gold-glow: rgba(212, 168, 75, 0.35);
+  --cyan: #2ee6d6;
+  --cyan-dim: #1a9e94;
+  --cyan-glow: rgba(46, 230, 214, 0.28);
+  --danger: #e85d5d;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --radius: 0.75rem;
+  --font-display: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-cyan: var(--cyan);
+  --color-cyan-dim: var(--cyan-dim);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, var(--gold-glow), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, var(--cyan-glow), transparent),
+    linear-gradient(180deg, #07080c 0%, #0a0c12 100%);
+  background-attachment: fixed;
+}
+
+.safe-pad {
+  padding-top: max(1rem, var(--safe-top));
+  padding-right: max(1rem, var(--safe-right));
+  padding-bottom: max(1rem, var(--safe-bottom));
+  padding-left: max(1rem, var(--safe-left));
+}
+
+.cyber-grid {
+  background-image:
+    linear-gradient(rgba(46, 230, 214, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 168, 75, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.neon-border {
+  border: 1px solid var(--border);
+  box-shadow:
+    0 0 0 1px rgba(212, 168, 75, 0.08),
+    0 0 24px rgba(46, 230, 214, 0.06);
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  color-scheme: dark;
+}

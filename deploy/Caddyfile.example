@@ -1,0 +1,37 @@
+# =============================================================================
+# Caddy 反向代理配置样例
+# 用途：自动 HTTPS + 反向代理到 Next.js (localhost:3000)
+# Caddy 自动签发/续期 Let's Encrypt 证书，无需额外配置。
+# =============================================================================
+
+app.example.com {
+    # 反向代理（Caddy 自动处理 HTTPS）
+    reverse_proxy localhost:3000
+
+    # 压缩
+    encode gzip zstd
+
+    # 安全头
+    header {
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    # 请求体限制
+    request_body {
+        max_size 1MB
+    }
+
+    # 日志（JSON 格式，便于接入日志平台）
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100MB
+            roll_keep 10
+        }
+        format json
+    }
+}

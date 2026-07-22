@@ -1,0 +1,49 @@
+﻿name: Bug report
+description: Report a reproducible product, engine, API, or deployment problem
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bazi engine
+        - Ziwei engine
+        - Liuyao engine
+        - Reading or LLM
+        - Account or data
+        - Frontend experience
+        - Docker or deployment
+        - Documentation or other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Description
+      description: Describe actual and expected behavior. Do not submit real personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: Commit SHA or engineVersion
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I removed real personal information and secrets
+          required: true

@@ -1,0 +1,15 @@
+# Replace @NWM1314 if the repository owner's GitHub handle differs.
+* @NWM1314
+
+# High-risk and domain-specific areas
+/src/lib/auth/ @NWM1314
+/src/app/api/auth/ @NWM1314
+/src/app/api/account/ @NWM1314
+/src/lib/db/ @NWM1314
+/src/lib/bazi/ @NWM1314
+/src/lib/ziwei/ @NWM1314
+/src/lib/liuyao/ @NWM1314
+/src/lib/reading/ @NWM1314
+/.github/workflows/ @NWM1314
+/Dockerfile @NWM1314
+/compose.yaml @NWM1314
