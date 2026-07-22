@@ -1,4 +1,4 @@
-# 赛博八字 · 产品方案 v1
+# 赛博命理 · 产品方案 v2
 
 > 依据 [jinchenma94/bazi-skill](https://github.com/jinchenma94/bazi-skill) 能力映射的 Web 产品  
 > 仓库：`cyber-divination` · 中文名：**赛博八字**  

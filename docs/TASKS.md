@@ -1185,7 +1185,7 @@ W8 T100–T109 紫微（建议账号后）   或   W9 T110–T117 六爻
 - [x] **P2+P3**：紫微/六爻全链路 + **流月/流日（T240 · engine 0.7.0）**  
 - [x] **P4**：首页入口 + Person + 品牌「赛博命理」；合参 cancel  
 - [x] **P5**：cancel（不阻塞）  
-- [x] 全量 `npm test` 444 绿；`npm run lint` 0 error  
+- [x] 全量 `npm test` 546 绿；`npm run lint` 0 error  
 
 **生产人工冒烟：** `docs/QA.md` §G（需 `DATABASE_URL` / Upstash / 可选邮件密钥）。  
 
@@ -1669,7 +1669,7 @@ npx vitest run src/lib/liuyao/analyze/kongwang.test.ts src/lib/ziwei/zihua.test.
 - [x] **P2+P3**：紫微/六爻全链路 + **流月/流日（T240 · engine 0.7.0）**  
 - [x] **P4**：首页入口 + Person + **品牌「赛博命理」（T230）**；合参 **不要求**  
 - [ ] **P5**：不要求（cancel）  
-- [x] 全量 `lint` 0 error / `test` 444 绿；QA §G 生产冒烟清单已备（跨设备需密钥人工勾选）  
+- [x] 全量 `lint` 0 error / `test` 546 绿；QA §G 生产冒烟清单已备（跨设备需密钥人工勾选）  
 
 ### 18.4 波次与依赖
 
@@ -1947,7 +1947,7 @@ P5/合参/飞星派：不要做。流月流日见 T240（必做）。
 
 ---
 
-*版本：v2.9 · W18–W21 + T231 代码/文档收口 done · 生产跨设备见 QA §G*
+*版本：v2.10 · W18–W28 done · 2026-07-22*
 ---
 
 ## 19. 专业性、工程规范与 Docker 整改（W22–W28）

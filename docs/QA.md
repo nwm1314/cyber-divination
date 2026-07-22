@@ -467,7 +467,7 @@
 
 ### G0 · 自动化基线（主 Agent / CI）
 
-- [x] `npm test` 全量绿（444）
+- [x] `npm test` 全量绿（546）
 - [x] `npm run lint` 0 error
 - [x] 限流 Redis 单测（mock）+ Magic Link 单测 + 流月流日确定性单测
 - [x] 品牌壳层：顶栏/layout metadata 为「赛博命理」；子产品入口保留赛博八字/紫微/六爻

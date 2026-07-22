@@ -19,9 +19,9 @@
 - [x] P0–P4 骨架 + 引擎深化至 W17
 - [x] W18–W21：限流、观测、账号、Postgres、六爻云端、品牌、紫微流月/流日
 - [x] T231：原阶段代码与文档收口
-- [ ] W22–W28：专业准确性、安全、GitHub 规范与 Docker 生产化整改
+- [x] W22–W28：专业准确性、安全、GitHub 规范与 Docker 生产化整改（15/18 done，T300/T301/T251 待外部验证）
 
-> 当前建议定位：传统文化学习型 **Alpha**。公开 Beta 前须完成 [项目审查结论](docs/PROJECT_REVIEW.md) 中的 P0 门禁。
+> 当前建议定位：传统文化学习型 **Alpha/Beta**（核心整改已基本完成，Docker 构建待外部验证）。
 
 ## 本地开发
 
@@ -42,6 +42,8 @@ npm run dev
 | `npm test` | Vitest 单测 |
 | `npm run sync:skill` | 同步 bazi skill references |
 | `npm run check` | lint warning 基线 + test + build |
+| `npm run db:migrate` | 数据库迁移（幂等，生产部署前执行） |
+| `npm run check:prod-env` | 生产环境变量校验 |
 | `npm run docker:build` | 构建本地生产镜像 |
 | `npm run docker:up` | Docker Compose 启动 Web + Postgres |
 | `npm run docker:down` | 停止 Compose 环境 |
@@ -90,7 +92,7 @@ docs/              # 产品、审查、任务和部署文档
 | MVP | 八字排盘 → 解读 → 反馈 → 分享 | 已完成 |
 | P0–P4 骨架 | 账号、紫微、六爻、跨术数 | 已完成 |
 | 原阶段收口 | 限流、观测、登录、Postgres、流月流日 | W18–W21 完成 |
-| 专业与工程整改 | 安全、金标准、证据层、GitHub、Docker | W22–W28 待执行 |
+| 专业与工程整改 | 安全、金标准、证据层、GitHub、Docker | W22–W28 基本完成 |
 | 生产放量 | P0 门禁 + QA + 备份恢复 | 暂缓 |
 
 ## 许可与第三方材料
