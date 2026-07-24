@@ -1,0 +1,4 @@
+composeFile: compose.production.yaml
+healthCheckUrl: http://127.0.0.1:18080/api/health
+upstreamPort: 18080
+expectedServices: [web]

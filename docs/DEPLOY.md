@@ -160,6 +160,12 @@ docker run --rm -p 3000:3000 \
   cyber-divination:local
 ```
 
+#### Open Proxy Control Plane（生产）
+
+`compose.production.yaml` 是受管生产发布专用配置；不要用本地集成用的 `compose.yaml` 替代。它不启动演示 Postgres，使用 `DATABASE_URL`、Upstash 与面板 Secret 注入，并在启动 Web 服务前运行幂等的 `npm run db:migrate`。
+
+将以下 Secret 保存到面板并附加到发布：`AUTH_SECRET`、`DATABASE_URL`、`UPSTASH_REDIS_REST_URL`、`UPSTASH_REDIS_REST_TOKEN`。面板清单位于 `.open-control-plane/deploy.yaml`，为 `bazi.nwmnow.com` 提供 127.0.0.1:18080 入口及 `/api/health` 探活。
+
 探活：
 
 | 端点 | 含义 |
