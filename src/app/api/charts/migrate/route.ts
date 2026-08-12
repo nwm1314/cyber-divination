@@ -15,6 +15,8 @@ import {
 import type { CloudChartRecord } from "@/lib/storage/cloud-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
 import { migrateBodySchema } from "@/lib/contracts";
+import { computeAuthoritativeChart } from "@/lib/bazi";
+import type { BirthProfile } from "@/lib/types";
 
 /**
  * POST /api/charts/migrate — 本地→云端合并（T83）
@@ -80,18 +82,25 @@ export async function POST(request: NextRequest) {
       item.chart.profileId;
     if (!id || typeof id !== "string") continue;
 
+    const profile = {
+      ...item.profile,
+      id,
+      userId,
+    } as BirthProfile;
+    let authoritativeChart: ReturnType<typeof computeAuthoritativeChart>;
+    try {
+      authoritativeChart = computeAuthoritativeChart(profile);
+    } catch {
+      continue;
+    }
+
     // 服务端权威：强制 userId + profileId 一致
     const bundle: LocalChartBundle = {
       profileId: id,
       profile: {
-        ...item.profile,
-        id,
-        userId,
-      } as LocalChartBundle["profile"],
-      chart: {
-        ...item.chart,
-        profileId: id,
-      } as LocalChartBundle["chart"],
+        ...profile,
+      },
+      chart: authoritativeChart,
       report: item.report as LocalChartBundle["report"],
       calibration: item.calibration as LocalChartBundle["calibration"],
       localUpdatedAt: item.localUpdatedAt ?? null,

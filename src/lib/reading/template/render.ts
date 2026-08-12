@@ -19,6 +19,7 @@ import {
   buildWuxingSection,
   sectionCitations,
 } from "./analyze";
+import { ensureChartEvidenceOnAdvice } from "@/lib/reading/llm/evidence";
 
 export type TemplateReadingOptions = {
   viewMode?: ViewMode;
@@ -89,18 +90,21 @@ export function renderTemplateReading(
     citations: sectionCitations(key),
   }));
 
-  return {
-    chartId: options?.chartId ?? chart.profileId,
-    mode: "template",
-    viewMode,
-    sections,
-    calibratePrompts,
-    disclaimer: DISCLAIMER,
-    engineVersion: chart.meta?.engineVersion,
-    school: chart.meta?.school,
-    warnings: chart.warnings?.length ? [...chart.warnings] : undefined,
-    evidence: chart.evidence?.length
-      ? chart.evidence.map((e) => ({ ...e }))
-      : undefined,
-  };
+  return ensureChartEvidenceOnAdvice(
+    {
+      chartId: options?.chartId ?? chart.profileId,
+      mode: "template",
+      viewMode,
+      sections,
+      calibratePrompts,
+      disclaimer: DISCLAIMER,
+      engineVersion: chart.meta?.engineVersion,
+      school: chart.meta?.school,
+      warnings: chart.warnings?.length ? [...chart.warnings] : undefined,
+      evidence: chart.evidence?.length
+        ? chart.evidence.map((e) => ({ ...e }))
+        : undefined,
+    },
+    chart,
+  );
 }

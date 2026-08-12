@@ -5,13 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/copy-standalone-assets.mjs",
     "start": "next start",
+    "start:standalone": "node scripts/start-standalone.mjs",
     "lint": "eslint",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "sync:skill": "node scripts/sync-bazi-skill.mjs",
+    "check:skill": "node scripts/sync-bazi-skill.mjs --check",
     "compare:iztro": "node scripts/compare-iztro.mjs",
-    "check": "npm run lint -- --max-warnings=8 && npm test && npm run build",
+    "check": "npm run lint -- --max-warnings=0 && npm test && npm run build",
     "db:migrate": "node scripts/db-migrate.mjs",
     "check:prod-env": "node scripts/validate-prod-env.mjs",
     "docker:build": "docker build -t cyber-divination:local .",
@@ -29,12 +33,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.43",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "iztro": "2.5.8",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"

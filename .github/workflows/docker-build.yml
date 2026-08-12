@@ -12,6 +12,10 @@ on:
       - public/**
       - src/**
       - .github/workflows/docker-build.yml
+      - compose.production.yaml
+      - compose.acceptance.yaml
+      - scripts/validate-prod-env.mjs
+      - scripts/redis-rest-stub.mjs
   push:
     branches: [main, master]
     paths:
@@ -23,6 +27,10 @@ on:
       - next.config.ts
       - public/**
       - src/**
+      - compose.production.yaml
+      - compose.acceptance.yaml
+      - scripts/validate-prod-env.mjs
+      - scripts/redis-rest-stub.mjs
 
 permissions:
   contents: read
@@ -40,9 +48,64 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.4
+          cache: npm
+
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
       - name: Build image
         run: docker build --tag cyber-divination:ci .
 
       - name: Inspect runtime user
         run: |
           test "$(docker image inspect cyber-divination:ci --format '{{.Config.User}}')" = "nextjs"
+
+      - name: Run production health check as non-root
+        run: |
+          docker run --detach --name cyber-divination-ci \
+            --publish 18080:3000 \
+            --env NODE_ENV=production \
+            --env AUTH_SECRET=ci-only-auth-secret \
+            --env AUTH_ALLOW_DEV_LOGIN=0 \
+            --env DATABASE_URL=postgres://ci:ci@127.0.0.1:5432/ci \
+            --env CLOUD_STORE_DRIVER=postgres \
+            --env RATE_LIMIT_DRIVER=redis \
+            --env RATE_LIMIT_TRUSTED_PROXY=0 \
+            --env UPSTASH_REDIS_REST_URL=https://ci.invalid \
+            --env UPSTASH_REDIS_REST_TOKEN=ci-only-token \
+            cyber-divination:ci
+          trap 'docker logs cyber-divination-ci; docker rm --force cyber-divination-ci' EXIT
+          test "$(docker exec cyber-divination-ci id -un)" = "nextjs"
+          curl --fail --retry 20 --retry-delay 2 http://127.0.0.1:18080/api/health
+
+      - name: Run disposable Compose health and recreation check
+        run: |
+          trap 'docker compose -f compose.yaml down --volumes --remove-orphans' EXIT
+          docker compose -f compose.yaml up -d --build
+          curl --fail --retry 30 --retry-delay 2 http://127.0.0.1:3000/api/health
+          docker compose -f compose.yaml exec -T db pg_isready -U cyber -d cyber_divination
+          docker compose -f compose.yaml up -d --force-recreate web
+          curl --fail --retry 30 --retry-delay 2 http://127.0.0.1:3000/api/health
+
+      - name: Run production migration, readiness, and persistence acceptance
+        run: |
+          compose_files=(-f compose.production.yaml -f compose.acceptance.yaml)
+          trap 'docker compose "${compose_files[@]}" down --volumes --remove-orphans' EXIT
+          docker compose "${compose_files[@]}" up -d --build
+          curl --fail --retry 30 --retry-delay 2 http://127.0.0.1:18081/api/health/ready
+          test "$(docker compose "${compose_files[@]}" exec -T web id -un | tr -d '\r')" = "nextjs"
+          docker compose "${compose_files[@]}" exec -T web sh -c 'printf persisted > /app/data/acceptance.txt'
+          docker compose "${compose_files[@]}" up -d --force-recreate web
+          curl --fail --retry 30 --retry-delay 2 http://127.0.0.1:18081/api/health
+          docker compose "${compose_files[@]}" exec -T web sh -c 'test "$(cat /app/data/acceptance.txt)" = persisted'
+
+      - name: Run browser smoke against the acceptance stack
+        run: npm run test:e2e -- --project=chromium --project=iphone-13 --project=pixel-5
+        env:
+          E2E_BASE_URL: http://127.0.0.1:18081

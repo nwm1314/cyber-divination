@@ -5,11 +5,16 @@ import { liuyaoGoldenCases, LIUYAO_GOLDEN_META } from "./golden-cases";
 
 describe("liuyao golden cases · T113 + T282", () => {
   it("fixture 元数据含来源流派版本", () => {
-    expect(LIUYAO_GOLDEN_META.source).toBeTruthy();
+    expect(LIUYAO_GOLDEN_META.source).toBe("project-internal");
     expect(LIUYAO_GOLDEN_META.school).toMatch(/najia|jingfang/);
     expect(LIUYAO_GOLDEN_META.dataVersion).toMatch(/^liuyao-data-/);
     expect(LIUYAO_GOLDEN_META.ruleSetVersion).toBeTruthy();
     expect(LIUYAO_GOLDEN_META.references.length).toBeGreaterThan(0);
+  });
+
+  it("明确标注为内部回归，不冒充外部验证 corpus", () => {
+    expect(liuyaoGoldenCases).toHaveLength(10);
+    expect(LIUYAO_GOLDEN_META.notes).toMatch(/非外部/);
   });
 
   it("用例数 ≥ 8", () => {

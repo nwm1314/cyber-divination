@@ -3,16 +3,17 @@ import { ErrorCode } from "@/lib/types";
 import { llmReading } from "@/lib/reading/llm/llm";
 import {
   assertSameOrigin,
-  checkBodySize,
   checkRateLimit,
   clientKeyFromRequest,
   logApi,
-  parseViewMode,
+  parseJsonBody,
   rateLimitResponseHeaders,
   requestIdHeader,
   resolveRequestId,
-  validateChartPayload,
+  stripAuthorityInput,
+  validateAuthoritativeBaziRequest,
 } from "@/lib/api";
+import { baziReadingRequestSchema } from "@/lib/contracts";
 
 export async function POST(request: NextRequest) {
   const started = Date.now();
@@ -59,59 +60,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const raw = await request.text();
-    const sizeErr = checkBodySize(raw);
-    if (sizeErr) {
+    const parsed = await parseJsonBody(request, baziReadingRequestSchema);
+    if (!parsed.ok) {
       logApi("warn", "api.reading.reject", {
         requestId,
         route: "/api/reading",
-        status: 413,
+        status: parsed.status,
         durationMs: Date.now() - started,
         clientKey,
         errorCode: ErrorCode.INVALID_PROFILE,
-        message: sizeErr,
+        message: parsed.message,
       });
       return NextResponse.json(
-        { error: { code: ErrorCode.INVALID_PROFILE, message: sizeErr } },
-        { status: 413, headers: rid },
+        { error: { code: ErrorCode.INVALID_PROFILE, message: parsed.message } },
+        { status: parsed.status, headers: rid },
       );
     }
 
-    let body: { chart?: unknown; viewMode?: unknown; gender?: unknown };
-    try {
-      body = JSON.parse(raw) as {
-        chart?: unknown;
-        viewMode?: unknown;
-        gender?: unknown;
-      };
-    } catch {
+    const resolved = validateAuthoritativeBaziRequest(parsed.data);
+    if (!resolved.ok) {
       return NextResponse.json(
         {
           error: {
             code: ErrorCode.INVALID_PROFILE,
-            message: "JSON 解析失败",
+            message: resolved.message,
           },
         },
         { status: 400, headers: rid },
       );
     }
 
-    const v = validateChartPayload(body.chart);
-    if (!v.ok) {
-      return NextResponse.json(
-        { error: { code: ErrorCode.INVALID_PROFILE, message: v.message } },
-        { status: 400, headers: rid },
-      );
-    }
-
-    const gender =
-      body.gender === "male" || body.gender === "female"
-        ? body.gender
-        : undefined;
-
-    const report = await llmReading(v.chart, {
-      viewMode: parseViewMode(body.viewMode),
-      gender,
+    const chart = stripAuthorityInput(resolved.data.chart);
+    const report = await llmReading(chart, {
+      viewMode: resolved.data.viewMode,
+      gender: resolved.data.profile.gender,
       requestId,
     });
     const durationMs = Date.now() - started;
@@ -132,7 +114,7 @@ export async function POST(request: NextRequest) {
       promptTokens: meta?.usage.promptTokens ?? null,
       completionTokens: meta?.usage.completionTokens ?? null,
       totalTokens: meta?.usage.totalTokens ?? null,
-      chartId: v.chart.profileId,
+      chartId: chart.profileId,
       mode: report.mode,
     });
 

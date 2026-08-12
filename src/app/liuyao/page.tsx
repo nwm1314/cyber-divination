@@ -9,6 +9,7 @@ import {
 } from "@/lib/storage";
 import type { LiuyaoMethod } from "@/lib/types/liuyao";
 import { Button, Card } from "@/components/ui";
+import { deleteArchive } from "@/lib/storage/sync";
 
 const emptySubscribe = () => () => {};
 
@@ -70,15 +71,22 @@ export default function LiuyaoHistoryPage() {
 
   const onDelete = useCallback(
     (id: string) => {
-      if (!confirm("确定删除该问卦？不可恢复。")) return;
+      if (!confirm("确定只删除本机问卦？云端档案不会改变。")) return;
       deleteLiuyaoChart(id);
-      void import("@/lib/storage/cloud-client").then(({ deleteCloudLiuyaoApi }) =>
-        deleteCloudLiuyaoApi(id).catch(() => undefined),
-      );
       refreshList();
     },
     [refreshList],
   );
+
+  const onDeleteCloud = useCallback(async (id: string) => {
+    if (!confirm("确定只删除云端六爻档案？本机档案不会改变。")) return;
+    try {
+      const result = await deleteArchive({ kind: "liuyao", id, scope: "cloud" });
+      window.alert(result.message);
+    } catch {
+      window.alert("云端删除失败，本机档案已保留");
+    }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col cyber-grid min-h-dvh">
@@ -144,6 +152,13 @@ export default function LiuyaoHistoryPage() {
                           看卦
                         </Button>
                       </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void onDeleteCloud(item.id)}
+                      >
+                        删除云端
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

@@ -13,7 +13,9 @@ services:
       - path: .env.docker
         required: false
     environment:
-      NODE_ENV: production
+      # Local Compose uses the development validation profile so memory-based
+      # rate limiting remains available without pretending to be production.
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
       HOSTNAME: 0.0.0.0
       AUTH_SECRET: ${AUTH_SECRET:-local-compose-auth-secret-change-before-production}

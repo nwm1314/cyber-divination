@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { ErrorCode } from "@/lib/types";
 import { findOrCreateUserByEmail } from "@/lib/auth/users";
 import {
@@ -10,11 +11,16 @@ import {
 import { toAppSession, userToSessionUser } from "@/lib/auth/types";
 import type { AuthJsSession } from "@/lib/auth/types";
 import { consumeMagicLink } from "@/lib/auth/magic-link";
+import { assertSameOrigin, parseJsonBody } from "@/lib/api";
 import {
   checkRateLimit,
   clientKeyFromRequest,
   rateLimitResponseHeaders,
 } from "@/lib/api/rate-limit";
+
+const callbackBodySchema = z.object({
+  token: z.string().trim().min(1).max(256),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,22 +41,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let body: { token?: unknown };
-    try {
-      body = (await request.json()) as { token?: unknown };
-    } catch {
+    const originErr = assertSameOrigin(request);
+    if (originErr) {
+      return NextResponse.json(
+        {
+          error: {
+            code: ErrorCode.AUTH_FORBIDDEN,
+            message: originErr,
+          },
+        },
+        { status: 403 },
+      );
+    }
+
+    const parsed = await parseJsonBody(request, callbackBodySchema);
+    if (!parsed.ok) {
       return NextResponse.json(
         {
           error: {
             code: ErrorCode.AUTH_LOGIN_FAILED,
-            message: "请求体无效",
+            message: parsed.message,
           },
         },
-        { status: 400 },
+        { status: parsed.status },
       );
     }
 
-    const token = typeof body.token === "string" ? body.token : "";
+    const token = parsed.data.token;
     const consumed = await consumeMagicLink(token);
     if (!consumed) {
       return NextResponse.json(

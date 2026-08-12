@@ -7,7 +7,7 @@ import {
   LUCUN_BY_YEAR_STEM,
   KUI_YUE_BY_YEAR_STEM,
 } from "./aux-stars";
-import { branchFromYinIndex, yinIndexFromBranch } from "./tables/constants";
+import { branchFromYinIndex } from "./tables/constants";
 import { ENGINE_VERSION } from "./tables/constants";
 
 describe("T160 辅星安星表", () => {

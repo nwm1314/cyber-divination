@@ -5,7 +5,6 @@
 import type { Dizhi, ZiweiStar } from "@/lib/types/ziwei";
 import type { Tiangan } from "./tables/constants";
 import {
-  JIEKONG_BY_YEAR_STEM,
   jiekongYinIndices,
   liuChangQuByYearBranch,
   MISC_AUX_CATEGORY,

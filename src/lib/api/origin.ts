@@ -11,6 +11,15 @@ function hostFromUrl(value: string | null): string | null {
   }
 }
 
+function isLocalHost(value: string): boolean {
+  try {
+    const hostname = new URL(`http://${value}`).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 function allowedHosts(): Set<string> {
   const hosts = new Set<string>();
   for (const key of ["AUTH_URL", "NEXT_PUBLIC_APP_URL"] as const) {
@@ -30,11 +39,10 @@ export function assertSameOrigin(request: Request): string | null {
   const method = request.method.toUpperCase();
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
-  const hostHeader =
-    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
-    request.headers.get("host") ||
-    "";
-  const requestHost = hostHeader.toLowerCase();
+  // X-Forwarded-Host is only trustworthy when a configured proxy strips and
+  // rewrites it. The supported proxy examples preserve the public Host, so do
+  // not let a direct caller choose the origin comparison host with this header.
+  const requestHost = (request.headers.get("host") || "").trim().toLowerCase();
 
   // GET/HEAD 或无 Origin 的同源导航（部分浏览器不带 Origin）可放宽
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
@@ -49,9 +57,7 @@ export function assertSameOrigin(request: Request): string | null {
     return null;
   }
 
-  const originHost = hostFromUrl(origin);
-  const refererHost = hostFromUrl(referer);
-  const candidate = originHost ?? refererHost;
+  const candidate = origin ? hostFromUrl(origin) : hostFromUrl(referer);
   if (!candidate) {
     return "无法解析 Origin/Referer";
   }
@@ -65,8 +71,7 @@ export function assertSameOrigin(request: Request): string | null {
 
   // 开发：localhost / 127.0.0.1 互通
   if (process.env.NODE_ENV !== "production") {
-    const local = (h: string) =>
-      h.startsWith("localhost") || h.startsWith("127.0.0.1");
+    const local = (h: string) => isLocalHost(h);
     if (local(candidate) && [...allowed].some(local)) {
       return null;
     }

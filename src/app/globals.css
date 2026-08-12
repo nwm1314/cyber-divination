@@ -19,10 +19,8 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --radius: 0.75rem;
-  --font-display: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
-    system-ui, sans-serif;
-  --font-body: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
-    system-ui, sans-serif;
+  --font-display: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-body: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 @theme inline {
@@ -38,7 +36,8 @@
   --color-cyan-dim: var(--cyan-dim);
   --color-danger: var(--danger);
   --font-sans: var(--font-body);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius-lg: var(--radius);
 }
 

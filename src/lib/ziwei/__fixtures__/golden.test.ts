@@ -51,8 +51,9 @@ describe("ziwei golden cases · T103", () => {
       // T270 policy
       expect(chart.meta.agePolicy).toBe("xusui");
       expect(chart.meta.school).toBe("sanhe");
-      expect(c.source).toBeTruthy();
+      expect(c.source).toBe("self-engine-snapshot");
       expect(c.engineVersionAtCapture).toBeTruthy();
+      expect(c.compareLib).toContain("iztro@2.5.8");
     });
   }
 

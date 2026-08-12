@@ -18,7 +18,10 @@ import {
 } from "@/lib/reading/llm/client";
 import { logApi } from "@/lib/api/logger";
 import { parseLlmReadingContent } from "@/lib/reading/llm/parse";
-import { attachTrustToBaziReport } from "@/lib/reading/llm/evidence";
+import {
+  attachTrustToBaziReport,
+  ensureChartEvidenceOnAdvice,
+} from "@/lib/reading/llm/evidence";
 
 /** 嵌入 classical-texts 可执行摘要（对齐 bazi-skill） */
 const CLASSICAL_RULES_SNIPPET = `
@@ -50,7 +53,7 @@ function buildSystemPrompt(chart: BaziChart, gender?: Gender): string {
   const evidenceHint =
     chart.evidence && chart.evidence.length > 0
       ? `\n## 引擎规则证据（只可叙述，不可改写 ruleId/结论）\n\`\`\`json\n${JSON.stringify(chart.evidence.slice(0, 12), null, 2)}\n\`\`\``
-      : "";
+      : "\n## 引擎规则证据\n当前命盘没有结构化 chart evidence；不得补造 ruleId、来源、结论或置信度。";
 
   return `你是一位精通中国传统命理学的资深专家，师承《穷通宝典》《三命通会》《滴天髓》《渊海子平》《千里命稿》《协纪辨方书》《子平真诠》《神峰通考》《果老星宗》九部经典。
 
@@ -62,6 +65,9 @@ function buildSystemPrompt(chart: BaziChart, gender?: Gender): string {
 - 所有输出使用简体中文
 - 必须按档案性别区分六亲与感情建议（当前：${genderLine}）
 - 只做叙事组织，不修改四柱/大运等引擎事实
+- 每条材料性建议都要说明对应的盘面事实或 chart evidence；只在 evidence 的 condition 成立时适用
+- 对没有 evidence、输入不完整或规则未覆盖之处明确写出不确定性，不能把趋势写成确定预测
+- 保留文化学习/娱乐定位；健康问题请就医，财务决策请独立核验，不提供医疗或投资建议
 
 ${CLASSICAL_RULES_SNIPPET}
 
@@ -91,6 +97,7 @@ ${evidenceHint}
   ]
 }
 八个 key 必须齐全且 body 非空。不要输出 ruleId 或 evidence 数组。
+advice 章必须包含：盘面依据、适用条件、不确定性，以及上述文化娱乐和医疗/财务边界；不得声称「必然」「稳赚」等确定结果。
 
 若无法输出 JSON，则按以下八章纯文本依次分析（标题含章节名）：
 1. 日主强弱与性格倾向
@@ -160,7 +167,8 @@ export type LlmReadingOptions = {
 };
 
 function withTrust(report: LlmReadingResult, chart: BaziChart): LlmReadingResult {
-  return { ...attachTrustToBaziReport(report, chart), meta: report.meta };
+  const withEvidence = ensureChartEvidenceOnAdvice(report, chart);
+  return { ...attachTrustToBaziReport(withEvidence, chart), meta: report.meta };
 }
 
 export async function llmReading(

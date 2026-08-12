@@ -6,7 +6,10 @@
 import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
+import type { BirthProfile } from "@/lib/types";
 import type { UserId } from "@/lib/types/user";
+import { computeAuthoritativeChart } from "@/lib/bazi";
+import { baziBirthProfileSchema } from "@/lib/contracts";
 import type {
   CloudChartRecord,
   CloudChartUpsertBody,
@@ -92,6 +95,61 @@ export async function getCloudChart(
   return memory!.users[userId]?.[profileId] ?? null;
 }
 
+function assertAttachedArtifact(
+  value: unknown,
+  field: "report" | "calibration",
+  profileId: string,
+  chart: { meta?: { engineVersion?: string; school?: string } },
+): void {
+  if (value == null || typeof value !== "object") {
+    throw new Error(`${field} structure invalid`);
+  }
+  const artifact = value as {
+    chartId?: unknown;
+    engineVersion?: unknown;
+    school?: unknown;
+  };
+  if (artifact.chartId !== profileId) {
+    throw new Error(`${field}.chartId must match profile.id`);
+  }
+  if (
+    artifact.engineVersion != null &&
+    artifact.engineVersion !== chart.meta?.engineVersion
+  ) {
+    throw new Error(`${field}.engineVersion does not match server chart`);
+  }
+  if (artifact.school != null && artifact.school !== chart.meta?.school) {
+    throw new Error(`${field}.school does not match server rules`);
+  }
+}
+
+/** Rebuild before selecting a storage driver so file and Postgres agree. */
+function prepareAuthoritativeUpsert(
+  body: CloudChartUpsertBody,
+): CloudChartUpsertBody {
+  const profileResult = baziBirthProfileSchema.safeParse(body.profile);
+  if (!profileResult.success) {
+    throw new Error(profileResult.error.issues[0]?.message ?? "profile invalid");
+  }
+  const profile = profileResult.data as BirthProfile;
+  const profileId = profile.id;
+  if (!body.chart || typeof body.chart !== "object") {
+    throw new Error("missing chart");
+  }
+  if (body.chart.profileId !== profileId) {
+    throw new Error("profile.id 与 chart.profileId 不一致");
+  }
+
+  const chart = computeAuthoritativeChart(profile);
+  if (body.report !== undefined && body.report !== null) {
+    assertAttachedArtifact(body.report, "report", profileId, chart);
+  }
+  if (body.calibration !== undefined && body.calibration !== null) {
+    assertAttachedArtifact(body.calibration, "calibration", profileId, chart);
+  }
+  return { ...body, profile, chart };
+}
+
 /**
  * 保存/覆盖本人档案；强制写入 userId，忽略 body 内 profile.userId 伪造
  */
@@ -99,43 +157,47 @@ export async function upsertCloudChart(
   userId: UserId,
   body: CloudChartUpsertBody,
 ): Promise<CloudChartRecord> {
-  if (isPostgresDriver()) return pgUpsertCloudChart(userId, body);
+  const authoritativeBody = prepareAuthoritativeUpsert(body);
+  if (isPostgresDriver()) {
+    return pgUpsertCloudChart(userId, authoritativeBody);
+  }
   await ensureLoaded();
-  const profileId = body.profile?.id ?? body.chart?.profileId;
+  const profileId = authoritativeBody.profile.id;
   if (!profileId || typeof profileId !== "string") {
     throw new Error("缺少 profile.id / chart.profileId");
-  }
-  if (body.chart.profileId !== profileId) {
-    throw new Error("profile.id 与 chart.profileId 不一致");
   }
 
   const now = new Date().toISOString();
   const existing = memory!.users[userId]?.[profileId];
   const profile = {
-    ...body.profile,
+    ...authoritativeBody.profile,
     id: profileId,
     userId,
   };
-  const chart = { ...body.chart, profileId };
+  const chart = { ...authoritativeBody.chart, profileId };
+  const report =
+    authoritativeBody.report === undefined
+      ? existing?.report ?? null
+      : authoritativeBody.report;
+  const calibration =
+    authoritativeBody.calibration === undefined
+      ? existing?.calibration ?? null
+      : authoritativeBody.calibration;
+  if (report != null) assertAttachedArtifact(report, "report", profileId, chart);
+  if (calibration != null) {
+    assertAttachedArtifact(calibration, "calibration", profileId, chart);
+  }
 
   const rec: CloudChartRecord = {
     id: profileId,
     userId,
     profile,
     chart,
-    report: body.report ?? existing?.report ?? null,
-    calibration: body.calibration ?? existing?.calibration ?? null,
+    report,
+    calibration,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
-
-  // 显式 null 表示清除
-  if (body.report === null) rec.report = null;
-  if (body.calibration === null) rec.calibration = null;
-  if (body.report !== undefined && body.report !== null) rec.report = body.report;
-  if (body.calibration !== undefined && body.calibration !== null) {
-    rec.calibration = body.calibration;
-  }
 
   if (!memory!.users[userId]) memory!.users[userId] = {};
   memory!.users[userId][profileId] = rec;

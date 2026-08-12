@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { computeChart } from "@/lib/bazi";
-import { goldenCases, makeProfile } from "./index";
+import { FIXTURE_META, goldenCases, makeProfile } from "./index";
 
 describe("golden test suite — 排盘金标准", () => {
+  it("明确标注为内部回归，不冒充外部验证 corpus", () => {
+    expect(FIXTURE_META.source).toBe("engine-regression");
+    expect(FIXTURE_META.ruleSetVersion).toBeTruthy();
+    expect(FIXTURE_META.school).toBe("ziping-default");
+    expect(goldenCases).toHaveLength(9);
+  });
+
   for (const c of goldenCases) {
     it(c.label, () => {
       const chart = computeChart(makeProfile(c.input));

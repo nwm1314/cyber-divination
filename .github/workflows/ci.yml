@@ -31,14 +31,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint without increasing the current warning baseline
-        run: npm run lint -- --max-warnings=8
+      - name: Verify Bazi skill provenance
+        run: npm run check:skill
+
+      - name: Lint with zero warnings
+        run: npm run lint -- --max-warnings=0
 
       - name: Run unit tests
         run: npm test
+
+      - name: Run independent Ziwei validation gate
+        run: node scripts/compare-iztro.mjs
 
       - name: Build production application
         run: npm run build
         env:
           AUTH_SECRET: ci-only-auth-secret-not-for-production
           NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke and security flows
+        run: npm run test:e2e
+        env:
+          AUTH_SECRET: ci-only-auth-secret-not-for-production
+          NEXT_TELEMETRY_DISABLED: '1'
+          E2E_SERVER_COMMAND: node .next/standalone/server.js

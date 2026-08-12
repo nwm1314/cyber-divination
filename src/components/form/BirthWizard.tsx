@@ -437,7 +437,7 @@ export function BirthWizard() {
             <Field label="性别" required error={errors.gender}>
               <div
                 className="flex gap-3"
-                role="group"
+                role="radiogroup"
                 aria-label="性别"
                 aria-required
               >
@@ -450,7 +450,8 @@ export function BirthWizard() {
                   <button
                     key={v}
                     type="button"
-                    aria-pressed={draft.gender === v}
+                    role="radio"
+                    aria-checked={draft.gender === v}
                     aria-label={lab}
                     onClick={() => patch({ gender: v })}
                     className={[
@@ -479,13 +480,14 @@ export function BirthWizard() {
             <Field label="在世状态" required>
               <div
                 className="flex gap-3"
-                role="group"
+                role="radiogroup"
                 aria-label="在世状态"
                 aria-required
               >
                 <button
                   type="button"
-                  aria-pressed={draft.alive}
+                  role="radio"
+                  aria-checked={draft.alive}
                   aria-label="在世"
                   onClick={() => patch({ alive: true, deathYear: "" })}
                   className={[
@@ -499,7 +501,8 @@ export function BirthWizard() {
                 </button>
                 <button
                   type="button"
-                  aria-pressed={!draft.alive}
+                  role="radio"
+                  aria-checked={!draft.alive}
                   aria-label="已故"
                   onClick={() => patch({ alive: false })}
                   className={[

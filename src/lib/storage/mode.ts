@@ -197,6 +197,11 @@ export function getDataStore(): Storage | null {
   return globalSessionStorage() ?? globalLocalStorage();
 }
 
+/** Storage used for the last sync/delete lifecycle result. */
+export function getLifecycleStore(): Storage | null {
+  return getDataStore();
+}
+
 /** 是否允许写云端 / 生成分享链接 */
 export function canUseCloudAndShare(): boolean {
   return isAccountPersistMode();

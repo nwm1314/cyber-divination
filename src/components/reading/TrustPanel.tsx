@@ -43,6 +43,16 @@ export function TrustPanel({
           {methodNote ? ` ${methodNote}` : ""}
         </p>
 
+        <div className="rounded-md border border-border/40 bg-surface/30 p-2 text-xs text-muted leading-relaxed">
+          <h4 className="font-semibold text-foreground/80 mb-1">
+            适用范围与不确定性
+          </h4>
+          <p>
+            建议仅适用于当前命盘输入及下方列出的 chart evidence 条件；输入不完整、规则未覆盖或现实环境变化，都可能影响实际结果。
+            本产品仅供传统文化学习与娱乐参考；健康问题请就医，财务决策请独立核验，不构成医疗或投资建议。
+          </p>
+        </div>
+
         {(pro || school || engineVersion) && (
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             {school ? (
@@ -87,7 +97,9 @@ export function TrustPanel({
 
         {pro && hasEvidence ? (
           <div>
-            <h4 className="text-xs font-semibold text-gold mb-1">规则证据</h4>
+            <h4 className="text-xs font-semibold text-gold mb-1">
+              盘面规则证据（chart evidence）
+            </h4>
             <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {evidence!.slice(0, 12).map((e) => (
                 <li
@@ -103,7 +115,7 @@ export function TrustPanel({
                       : ""}
                   </div>
                   {e.condition ? (
-                    <div className="text-muted/70">条件：{e.condition}</div>
+                    <div className="text-muted/70">适用条件：{e.condition}</div>
                   ) : null}
                 </li>
               ))}

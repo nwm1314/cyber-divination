@@ -12,6 +12,9 @@ import {
 import {
   pullCloudChartsToLocal,
   pushLocalChartsToCloud,
+  formatSyncState,
+  getLastSyncState,
+  deleteArchive,
 } from "@/lib/storage/sync";
 import {
   markMigrateDone,
@@ -86,11 +89,28 @@ export default function ChartsPage() {
 
   const onDelete = useCallback(
     (id: string) => {
-      if (!confirm("确定删除该档案？不可恢复。")) return;
+      if (!confirm("确定只删除本机档案？云端档案不会改变。")) return;
       deleteChart(id);
       refreshList();
     },
     [refreshList],
+  );
+
+  const onDeleteCloud = useCallback(
+    async (kind: "bazi" | "ziwei", id: string) => {
+      if (!loggedIn) return;
+      if (!confirm("确定只删除云端档案？本机档案不会改变。")) return;
+      setSyncBusy(true);
+      try {
+        const result = await deleteArchive({ kind, id, scope: "cloud" });
+        setSyncMsg(result.message);
+      } catch {
+        setSyncMsg("云端删除失败，本机档案已保留");
+      } finally {
+        setSyncBusy(false);
+      }
+    },
+    [loggedIn],
   );
 
   const onPush = useCallback(async () => {
@@ -100,7 +120,7 @@ export default function ChartsPage() {
       const r = await pushLocalChartsToCloud();
       const failHint =
         r.failed.length > 0 ? `，失败 ${r.failed.length} 条` : "";
-      setSyncMsg(`已推送 ${r.pushed} 条到云端${failHint}`);
+      setSyncMsg(formatSyncState(getLastSyncState()) ?? `已推送 ${r.pushed} 条到云端${failHint}`);
     } catch {
       setSyncMsg("推送失败，请确认已登录");
     } finally {
@@ -116,7 +136,7 @@ export default function ChartsPage() {
       refreshList();
       const failHint =
         r.failed.length > 0 ? `，失败 ${r.failed.length} 条` : "";
-      setSyncMsg(`已从云端拉取 ${r.pulled} 条${failHint}`);
+      setSyncMsg(formatSyncState(getLastSyncState()) ?? `已从云端拉取 ${r.pulled} 条${failHint}`);
     } catch {
       setSyncMsg("拉取失败，请确认已登录");
     } finally {
@@ -314,6 +334,16 @@ export default function ChartsPage() {
                         <Link href={`/chart/${item.profileId}/reading`}>
                           <Button size="sm">解读</Button>
                         </Link>
+                        {loggedIn ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={syncBusy}
+                            onClick={() => void onDeleteCloud("bazi", item.profileId)}
+                          >
+                            删除云端
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -351,7 +381,7 @@ export default function ChartsPage() {
             {ziweiList.length === 0 ? (
               <Card title="暂无紫微盘" subtitle="本地存储，刷新不丢">
                 <p className="text-sm text-muted mb-4 leading-relaxed">
-                  紫微盘与八字档案分开保存；云端同步可选，尚未接入。
+              紫微盘与八字档案分开保存；登录后可手动推送/拉取云端。删除本页档案只删除本机；云端删除请在对应云端生命周期操作中明确选择。
                 </p>
                 <Link href="/ziwei/new">
                   <Button size="sm">排紫微盘</Button>
@@ -377,6 +407,16 @@ export default function ChartsPage() {
                               看盘
                             </Button>
                           </Link>
+                          {loggedIn ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={syncBusy}
+                              onClick={() => void onDeleteCloud("ziwei", item.chartId)}
+                            >
+                              删除云端
+                            </Button>
+                          ) : null}
                           <Link href={`/ziwei/${item.chartId}/reading`}>
                             <Button size="sm">解读</Button>
                           </Link>

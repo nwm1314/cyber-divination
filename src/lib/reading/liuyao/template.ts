@@ -14,6 +14,7 @@ import {
 } from "@/lib/liuyao";
 import { analyzeDongBian, staticDongBianHint } from "@/lib/liuyao/analyze/dongbian";
 import { resolveYongShenStatus } from "@/lib/liuyao/analyze/yongshen-status";
+import { LIUYAO_RULE_SCOPE_NOTE } from "@/lib/liuyao/analyze/scope";
 import {
   DISCLAIMER,
   LIUYAO_SECTION_KEYS,
@@ -66,7 +67,9 @@ function changingLines(chart: LiuyaoChart): LiuyaoLine[] {
 
 function buildQuestion(chart: LiuyaoChart, viewMode: ViewMode): string {
   const method = METHOD_LABEL[chart.method] ?? chart.method;
+  const scopeNote = LIUYAO_RULE_SCOPE_NOTE;
   const base = [
+    scopeNote,
     "六爻解卦强调「一事一问」：本卦只对应您当下所问的一件事，勿把同一卦套到无关议题。",
     `所问：${chart.question.trim() || "（未填写事项）"}。`,
     `起卦方式：${method}。`,

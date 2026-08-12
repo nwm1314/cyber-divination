@@ -38,7 +38,7 @@ const GOLDEN_META = {
   source: "self-engine-snapshot",
   engineVersionAtCapture: "0.8.0",
   agePolicy: "xusui" as const,
-  compareLib: "iztro@^2.5.0 (optional peer)",
+  compareLib: "iztro@2.5.8 (independent test oracle; not runtime)",
 };
 
 const _rawGoldenCases: ZiweiGoldenCase[] = [

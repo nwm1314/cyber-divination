@@ -30,8 +30,8 @@
 
 | 源 | 链接 | 许可（以仓库为准） | 语言/形态 | 与本项目契合度 | 备注 |
 |----|------|-------------------|-----------|----------------|------|
-| **iztro** | https://github.com/SylarLong/iztro | MIT（常见声明） | TypeScript，npm 可装 | **高（对照用）** | 社区活跃的紫微排盘库；三合向；适合 **金标准对照**，不宜直接重依赖替换自研策略 |
-| **iztro 文档/演示** | https://iztro.com / 仓库 README | 同库 | 文档 + 示例 | 中高 | 安星顺序、四化示例可读 |
+| **iztro@2.5.8** | https://github.com/SylarLong/iztro/releases/tag/v2.5.8 | MIT（仓库 LICENSE；npm package metadata） | TypeScript，npm 可装 | **高（对照用）** | 版本锁定为独立测试 oracle；不进入运行时，不替代自研策略 |
+| **iztro 文档/演示** | https://iztro.com / 仓库 README | 同库 | 文档 + 示例 | 中高 | 只作为 API/流派配置说明，不作为本项目样本数据 |
 | **lunar-javascript** | 项目已依赖 | MIT 系 | JS 农历 | **已用** | 仅日历，非紫微 |
 | 各类「紫微斗数」教学站 / 表图 | 多站点（非代码） | 版权不一 | 表图、口诀 | 中 | 作 **规则注释** 用；不得直接抄大段商业文案 |
 
@@ -91,7 +91,7 @@
 | 四化 | 无 | 生年四化落星/落宫 |
 | 金标准覆盖 | 主星+大限为主 | 辅星+四化用例 |
 | 模板深度 | 宫位主星摘要 | 引用四化/辅星事实句 |
-| 外部对照流水线 | 无 | 可选脚本：同输入 diff iztro |
+| 外部对照流水线 | TASK-004 已建立 Ziwei gate | `node scripts/compare-iztro.mjs`；精确要求 `iztro@2.5.8`，缺依赖/版本漂移均 exit 1 |
 
 ---
 
@@ -105,10 +105,24 @@
 
 ---
 
-## 8. 参考链接速查
+## 8. TASK-004 独立验证门禁
+
+门禁契约记录在 `src/lib/ziwei/__fixtures__/iztro-compare.test.ts` 和
+`scripts/compare-iztro.mjs`（`task-004.ziwei-iztro.v1`）：
+
+- **输入性质**：8 条输入向量来自项目自己的 `self-engine-snapshot` golden cases；它们是项目选取的测试向量，不是外部 corpus，不能声称覆盖“≥1000 例”。
+- **独立来源**：运行时调用锁定的 `iztro@2.5.8`；npm metadata 与仓库 LICENSE 均为 MIT，仓库为 `SylarLong/iztro`。仅测试/脚本侧使用，不 vendoring，也不作为产品运行时依赖。
+- **学校/口径**：本项目比较侧为 `sanhe`；oracle 使用 iztro v2.5.8 默认配置。该 gate 只证明列出的字段在固定输入下相同，不证明跨流派或完整专业规则等价。
+- **严格字段**：命宫地支、身宫地支、五行局、十四主星落支、前两步大限的起止岁/宫名/地支。当前 `allowedDifferences` 为空；任何比较字段差异均失败。
+- **明确排除**：辅星/杂曜、亮度、四化、运限动态层和第 3–12 步大限不在本 gate 的声明范围内。
+- **失败形态**：失败保留 `schemaVersion`、case id、category、field、ours、theirs、按类别计数和版本元数据，便于定位规则差异；缺少依赖或版本/许可证漂移在脚本层直接失败。
+
+主 Agent 接入时应把 `iztro@2.5.8` 写入 devDependency/lockfile，并在 CI 的 `npm ci` 后调用该脚本；本并行阶段按约束没有修改 `package.json`、`package-lock.json` 或 CI。若 CI 尚未接入，该 gate 不能被称为已完成。
+
+## 9. 参考链接速查
 
 - iztro：https://github.com/SylarLong/iztro  
 - 本仓规则说明：`src/lib/ziwei/references/README.md`  
 - 产品/任务：`docs/PRODUCT.md` §12、`docs/TASKS.md` §12 T150/T152  
 
-*文档版本：T150 · 2026-07-21*
+*文档版本：T150 + TASK-004 · 2026-08-11*

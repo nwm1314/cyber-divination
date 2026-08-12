@@ -4,6 +4,16 @@ import type { PersonId, UserId } from "./user";
 
 export type Gender = "male" | "female";
 
+export type BaziSkillProvenance = {
+  skillRef: "bazi-skill";
+  source: "project-synced-skill";
+  sourceLicense: "MIT";
+  referenceManifestVersion: string;
+  referenceHash: string;
+  files: readonly { path: string; sha256: string }[];
+  execution: "deterministic-project-engine";
+};
+
 export type BirthPlace = {
   province: string;
   city: string;
@@ -294,6 +304,7 @@ export type BaziChart = {
       unknownHour: string;
       historicalDst: boolean;
     };
+    provenance?: BaziSkillProvenance;
   };
 };
 

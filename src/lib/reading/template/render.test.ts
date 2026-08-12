@@ -206,4 +206,42 @@ describe("renderTemplateReading", () => {
     expect(fTen).toContain("女命");
     expect(mTen).not.toBe(fTen);
   });
+
+  it("建议章携带 chart evidence、适用条件与不确定性边界", () => {
+    const chart: BaziChart = {
+      ...mockChart,
+      evidence: [
+        {
+          ruleId: "yongshen.fuyi.v1",
+          source: "engine",
+          conclusion: "扶抑用木",
+          confidence: 0.8,
+          condition: "日主身弱且木为扶助方向",
+        },
+      ],
+      warnings: ["时辰采用未知时处理"],
+    };
+
+    const advice = renderTemplateReading(chart).sections.find(
+      (section) => section.key === "advice",
+    )!.body;
+
+    expect(advice).toContain("盘面依据与适用边界");
+    expect(advice).toContain("yongshen.fuyi.v1");
+    expect(advice).toContain("适用条件：日主身弱且木为扶助方向");
+    expect(advice).toContain("时辰采用未知时处理");
+    expect(advice).toContain("仅供传统文化学习与娱乐参考");
+    expect(advice).toContain("健康问题请就医");
+    expect(advice).toContain("财务决策请独立核验");
+  });
+
+  it("缺少 chart evidence 时明确降级与不确定性，不伪造依据", () => {
+    const advice = renderTemplateReading(mockChart).sections.find(
+      (section) => section.key === "advice",
+    )!.body;
+
+    expect(advice).toContain("未提供结构化 chart evidence");
+    expect(advice).toContain("不确定性");
+    expect(advice).not.toContain("ruleId");
+  });
 });

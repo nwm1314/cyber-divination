@@ -36,9 +36,92 @@ export const birthProfileMinSchema = z.object({
 
 export type BirthProfileMin = z.infer<typeof birthProfileMinSchema>;
 
+/**
+ * Complete input accepted by the server-side Bazi authority boundary.
+ * Derived chart fields are deliberately not part of this contract.
+ */
+export const baziBirthProfileSchema = birthProfileMinSchema
+  .extend({
+    formerName: z.string().max(64).optional(),
+    renameYear: z.union([z.number().int(), z.literal("unknown")]).optional(),
+    solarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    lunarDate: z.string().max(32).optional(),
+    isLeapMonth: z.boolean().optional(),
+    birthTime: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
+    shichenUnknown: z.boolean().optional(),
+    birthPlace: z
+      .object({
+        province: z.string().max(64),
+        city: z.string().max(64),
+        lng: z.number().finite().min(-180).max(180).optional(),
+        lat: z.number().finite().min(-90).max(90).optional(),
+      })
+      .optional(),
+    alive: z.boolean(),
+    deathYear: z.number().int().min(1).optional(),
+  })
+  .superRefine((profile, ctx) => {
+    if (profile.shichenUnknown && profile.birthTime) {
+      ctx.addIssue({
+        code: "custom",
+        message: "shichenUnknown 与 birthTime 不能同时提供",
+        path: ["birthTime"],
+      });
+    }
+    if (profile.alive && profile.deathYear != null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "在世档案不能提供 deathYear",
+        path: ["deathYear"],
+      });
+    }
+    if (!profile.alive && profile.deathYear == null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "已故档案必须提供 deathYear",
+        path: ["deathYear"],
+      });
+    }
+  });
+
+export type BaziBirthProfileInput = z.infer<typeof baziBirthProfileSchema>;
+
+/**
+ * Computational Bazi input embedded in a browser chart. Ownership fields are
+ * intentionally excluded so this value can never establish authorization.
+ */
+export const baziAuthorityInputSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1).max(64),
+  gender: z.enum(["male", "female"]),
+  analysisBaseDate: z.string().min(4).max(32),
+  useTrueSolarTime: z.boolean(),
+  formerName: z.string().max(64).optional(),
+  renameYear: z.union([z.number().int(), z.literal("unknown")]).optional(),
+  solarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  lunarDate: z.string().max(32).optional(),
+  isLeapMonth: z.boolean().optional(),
+  birthTime: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
+  shichenUnknown: z.boolean().optional(),
+  birthPlace: z
+    .object({
+      province: z.string().max(64),
+      city: z.string().max(64),
+      lng: z.number().finite().min(-180).max(180).optional(),
+      lat: z.number().finite().min(-90).max(90).optional(),
+    })
+    .optional(),
+  alive: z.boolean(),
+  deathYear: z.number().int().min(1).optional(),
+});
+
+export type BaziAuthorityInput = z.infer<typeof baziAuthorityInputSchema>;
+
 /** POST /api/charts */
 export const cloudChartUpsertSchema = z.object({
-  profile: birthProfileMinSchema.passthrough(),
+  // Unknown client fields are stripped; chart/report are verified/replaced by
+  // the server boundary rather than treated as authoritative input.
+  profile: baziBirthProfileSchema,
   chart: baziChartMinSchema.passthrough(),
   report: z.unknown().optional().nullable(),
   calibration: z.unknown().optional().nullable(),
@@ -53,6 +136,24 @@ export const cloudChartUpsertSchema = z.object({
 });
 
 export type CloudChartUpsertInput = z.infer<typeof cloudChartUpsertSchema>;
+
+/** POST /api/reading. A supplied chart is only a compatibility hint. */
+export const baziReadingRequestSchema = z
+  .object({
+    profile: baziBirthProfileSchema.optional(),
+    chart: z.unknown().optional(),
+    viewMode: z.enum(["plain", "pro"]).optional(),
+    gender: z.enum(["male", "female"]).optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (!body.profile && body.chart == null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "缂哄皯 Bazi 鐢熷嚭淇℃伅鎴栨湁鏁堢洏",
+        path: ["profile"],
+      });
+    }
+  });
 
 /** 紫微盘最小字段 */
 export const ziweiChartMinSchema = z.object({
@@ -108,7 +209,7 @@ export const migrateBodySchema = z.object({
   charts: z.array(
     z.object({
       profileId: z.string().max(128).optional(),
-      profile: birthProfileMinSchema.passthrough(),
+      profile: baziBirthProfileSchema.passthrough(),
       chart: baziChartMinSchema.passthrough(),
       report: z.unknown().optional().nullable(),
       calibration: z.unknown().optional().nullable(),

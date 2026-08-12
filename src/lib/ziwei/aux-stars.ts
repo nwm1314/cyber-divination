@@ -5,7 +5,6 @@
 import type { ZiweiStar } from "@/lib/types/ziwei";
 import {
   auxStarsAtYin,
-  placeAuxStars,
   type AuxStarPlacement,
 } from "./tables/aux-stars";
 

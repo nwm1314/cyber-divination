@@ -157,9 +157,9 @@ export default function ReadingPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            profile: stored,
             chart,
             viewMode: vm,
-            gender: stored.gender,
           }),
         });
         const json = await res.json();
@@ -189,7 +189,7 @@ export default function ReadingPage() {
         setLlmLoading(false);
       }
     },
-    [chart, templateReport, viewMode, stored.gender],
+    [chart, templateReport, viewMode, stored],
   );
 
   const handleModeChange = useCallback(

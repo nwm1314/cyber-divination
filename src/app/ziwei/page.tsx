@@ -10,7 +10,7 @@ import {
 import {
   pullCloudZiweiToLocal,
   pushLocalZiweiToCloud,
-  deleteOneCloudZiwei,
+  deleteArchive,
 } from "@/lib/storage/sync";
 import { Button, Card } from "@/components/ui";
 
@@ -40,13 +40,25 @@ export default function ZiweiListPage() {
 
   const onDelete = useCallback(
     (id: string) => {
-      if (!confirm("确定删除该紫微盘？不可恢复。")) return;
+      if (!confirm("确定只删除本机紫微盘？云端档案不会改变。")) return;
       deleteZiweiChart(id);
-      void deleteOneCloudZiwei(id).catch(() => undefined);
       refreshList();
     },
     [refreshList],
   );
+
+  const onDeleteCloud = useCallback(async (id: string) => {
+    if (!confirm("确定只删除云端紫微盘？本机档案不会改变。")) return;
+    setSyncBusy(true);
+    try {
+      const result = await deleteArchive({ kind: "ziwei", id, scope: "cloud" });
+      setSyncMsg(result.message);
+    } catch {
+      setSyncMsg("云端删除失败，本机档案已保留");
+    } finally {
+      setSyncBusy(false);
+    }
+  }, []);
 
   const onPush = useCallback(async () => {
     setSyncBusy(true);
@@ -161,6 +173,14 @@ export default function ZiweiListPage() {
                       <Link href={`/ziwei/${item.chartId}/reading`}>
                         <Button size="sm">解读</Button>
                       </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={syncBusy}
+                        onClick={() => void onDeleteCloud(item.chartId)}
+                      >
+                        删除云端
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

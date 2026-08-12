@@ -71,6 +71,7 @@ DDL：`src/lib/db/schema.ts` / `src/lib/db/migrate.sql`。
 | 变量 | 必填 | 默认 | 说明 |
 |------|------|------|------|
 | `RATE_LIMIT_DRIVER` | 否 | `memory` | `memory` \| `redis`。非法值 fail-fast |
+| `RATE_LIMIT_TRUSTED_PROXY` | 生产必填 | 无 | `0` 直连（忽略转发头）或 `1` 仅在受管反代覆盖 `X-Real-IP`/`X-Forwarded-For` 时使用 |
 | `RATE_LIMIT_READING_MAX` | 否 | `15` | `/api/reading*` 窗口内最大次数 |
 | `RATE_LIMIT_READING_WINDOW_MS` | 否 | `60000` | 解读限流窗口（毫秒） |
 | `RATE_LIMIT_SHARE_MAX` | 否 | `30` | `/api/share` 窗口内最大次数 |
@@ -78,7 +79,7 @@ DDL：`src/lib/db/schema.ts` / `src/lib/db/migrate.sql`。
 | `UPSTASH_REDIS_REST_URL` | `redis` 时必填 | — | 可与分享共用同一 Upstash 库 |
 | `UPSTASH_REDIS_REST_TOKEN` | `redis` 时必填 | — | 同上 |
 
-客户端标识：`x-forwarded-for` 首段 → `x-real-ip` → `anon`（截断 64 字符）。超限返回 **HTTP 429**，并带 `X-RateLimit-*`、`Retry-After`。
+客户端标识由 `RATE_LIMIT_TRUSTED_PROXY` 决定：`0` 时忽略所有转发头并使用直连地址；`1` 时只使用受管反代覆盖后的 `X-Real-IP`，其次才使用 `X-Forwarded-For` 首段，无法验证时回落 `anon`。超限返回 **HTTP 429**，并带 `X-RateLimit-*`、`Retry-After`。
 
 | 驱动 | 行为 |
 |------|------|
@@ -196,7 +197,7 @@ Compose 启动 Web + Postgres，并使用 named volume 保存数据库和本地�
 | 本地 Compose | Postgres + local 分享 + memory 限流 |
 | 生产单副本 | Postgres；分享仍推荐 Upstash；禁止示例密钥 |
 | 生产多副本 | Postgres + Upstash 分享 + Redis 限流；禁止 file/memory |
-| 反向代理 | 配置可信代理和真实客户端 IP；完成 T253 前不得盲目信任外部 `X-Forwarded-For` |
+| 反向代理 | 设 `RATE_LIMIT_TRUSTED_PROXY=1` 前，必须使用样例中的覆盖式真实 IP 转发；否则设为 `0` 忽略转发头 |
 
 健康检查建议：
 
@@ -567,14 +568,15 @@ server {
   location / {
     proxy_pass http://127.0.0.1:3000;
     proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # Overwrite, do not append untrusted client input.
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 }
 ```
 
-4. **务必**转发 `X-Forwarded-For` / `X-Real-IP`，否则限流键多为 `anon`。  
+4. 若设置 `RATE_LIMIT_TRUSTED_PROXY=1`，反代必须覆盖（不能追加）`X-Real-IP` / `X-Forwarded-For`，并阻止外部客户端自行注入；不满足时设为 `0`，应用会忽略这些头。
 5. HTTP→HTTPS 可用 certbot `redirect` 或额外 `listen 80` 301。
 
 #### 完整配置样例
@@ -601,13 +603,47 @@ sudo sed -i 's/app.example.com/你的域名/g' /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-**安全头说明**（nginx.example.conf 已配置）：
-- `Content-Security-Policy`：仅允许自身资源，`style-src 'unsafe-inline'` 适配 Tailwind CSS
-- `X-Content-Type-Options: nosniff`：禁止 MIME 类型嗅探
-- `X-Frame-Options: DENY`：禁止被嵌入 iframe
-- `Strict-Transport-Security`：强制 HTTPS（HSTS, max-age=2年）
-- `Referrer-Policy: strict-origin-when-cross-origin`：跨域时仅发送域名
-- `Permissions-Policy`：禁用摄像头/麦克风/地理位置
+### 9.2.1 安全响应头基线（TASK-011）
+
+应用层基线定义在 `next.config.ts` 的 `headers()` 中，覆盖页面、API、
+`/_next/static` 和 `share/[token]/opengraph-image` 等 Next.js 响应。这样直接
+运行 standalone、使用 Vercel，或更换反向代理时，不会因为代理样例没有生效而
+静默丢失安全头。Nginx/Caddy 样例重复同一组值；Nginx 会先隐藏上游同名头，
+避免浏览器把两份 CSP 合并成更严格且难以诊断的策略。
+
+| 响应头 | 基线 | 目的 / 兼容性说明 |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | 浏览器资源默认只允许本站；`unsafe-inline` 是当前 Next 客户端启动、Tailwind 内联样式和打印导出的必要兼容项。开发模式额外加入 `unsafe-eval`，生产不加入。 |
+| `X-Content-Type-Options` | `nosniff` | 禁止 MIME 嗅探。 |
+| `X-Frame-Options` | `DENY` | 与 CSP `frame-ancestors 'none'` 一起防点击劫持。 |
+| `X-XSS-Protection` | `0` | 关闭过时的浏览器 XSS filter，由 CSP 负责防护。 |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | 跨站只发送来源域名。 |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | 禁用当前产品不需要的设备能力。 |
+
+外部资源和核心流程的核对结果：
+
+- 认证、云端导出、排盘/解读和分享 API 都是同源 `fetch`，因此
+  `connect-src 'self'` 足够；没有为浏览器开放 LLM、Resend 或数据库地址。
+- 本地 PNG/SVG 导出使用 `data:`/`blob:`，报告打印窗口包含内联脚本，因此
+  `img-src` 保留这两种来源，`script-src`/`style-src` 保留 `unsafe-inline`。
+- `next/font/google` 在构建时被 Next.js 自托管为本站静态资源，浏览器只需
+  `font-src 'self'`。OG image 的 Fontsource 字体、Resend 邮件和 LLM 请求均为
+  服务端请求，不应通过浏览器 CSP 放行；OG image 失败时已有无字体回落。
+
+HSTS 单独按 HTTPS 处理：应用层仅在请求带有 TLS 终结器注入的
+`X-Forwarded-Proto: https` 时返回 `Strict-Transport-Security`；开发模式和
+HTTP 代理跳不会启用它。Nginx 只在 `listen 443` 的 server block、Caddy 只在
+自动 HTTPS 的站点 block 设置 HSTS，80 端口的重定向不设置。生产代理必须保留
+`X-Forwarded-Proto`，并在发布后确认：
+
+```bash
+curl -sSI https://你的域名/ | grep -Ei 'content-security-policy|strict-transport-security|x-frame-options|referrer-policy|permissions-policy'
+curl -sSI http://你的域名/ | grep -Ei '^HTTP/|strict-transport-security'
+```
+
+第一条应看到完整基线和 HSTS；第二条应为 HTTPS 重定向，且不应因 HTTP 响应
+启用 HSTS。`includeSubDomains; preload` 只有在所有子域名都稳定支持 HTTPS
+时才可保留；否则请在部署前从应用与代理样例同时移除这两个参数。
 
 ### 9.3 检查
 
@@ -693,6 +729,7 @@ npm run dev
 - [ ] `DATABASE_URL` 指向生产 Postgres；
 - [ ] `CLOUD_STORE_DRIVER=postgres`；
 - [ ] 多副本时 `SHARE_STORE_DRIVER=upstash`、`RATE_LIMIT_DRIVER=redis`；
+- [ ] 生产显式设置 `RATE_LIMIT_TRUSTED_PROXY=0` 或 `1`，并与反代覆盖策略一致；
 - [ ] LLM、Redis、数据库密钥通过平台 Secret 注入。
 
 ### 11.3 数据与发布

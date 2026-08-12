@@ -20,6 +20,9 @@ export {
 
 export {
   baziChartMinSchema,
+  baziAuthorityInputSchema,
+  baziBirthProfileSchema,
+  baziReadingRequestSchema,
   birthProfileMinSchema,
   cloudChartUpsertSchema,
   ziweiChartMinSchema,
@@ -30,6 +33,8 @@ export {
   personInputSchema,
   assertChartProfileConsistency,
   type BaziChartMin,
+  type BaziAuthorityInput,
+  type BaziBirthProfileInput,
   type BirthProfileMin,
   type CloudChartUpsertInput,
 } from "./charts";

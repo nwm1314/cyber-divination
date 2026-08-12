@@ -65,6 +65,8 @@ describe("contracts/charts", () => {
         id: "p1",
         name: "A",
         gender: "male",
+        solarDate: "1990-01-01",
+        alive: true,
         analysisBaseDate: "2026-01-01",
         useTrueSolarTime: false,
       },

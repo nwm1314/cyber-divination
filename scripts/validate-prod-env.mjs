@@ -21,6 +21,25 @@ function isFileCloudStoreForbiddenInProd() {
   return !hasDatabaseUrl();
 }
 
+function validateRateLimitConfig(errors) {
+  const driver = (process.env.RATE_LIMIT_DRIVER ?? "").trim().toLowerCase();
+  if (driver !== "redis") {
+    errors.push("production requires RATE_LIMIT_DRIVER=redis");
+  } else {
+    if (!process.env.UPSTASH_REDIS_REST_URL?.trim()) {
+      errors.push("RATE_LIMIT_DRIVER=redis requires UPSTASH_REDIS_REST_URL");
+    }
+    if (!process.env.UPSTASH_REDIS_REST_TOKEN?.trim()) {
+      errors.push("RATE_LIMIT_DRIVER=redis requires UPSTASH_REDIS_REST_TOKEN");
+    }
+  }
+
+  const trustedProxy = process.env.RATE_LIMIT_TRUSTED_PROXY?.trim();
+  if (trustedProxy !== "0" && trustedProxy !== "1") {
+    errors.push("production requires RATE_LIMIT_TRUSTED_PROXY=0 or 1");
+  }
+}
+
 function validateProductionConfig() {
   if (!isProduction()) {
     console.log(
@@ -45,6 +64,8 @@ function validateProductionConfig() {
       `生产禁止以 file 作为账号/云端主存储（CLOUD_STORE_DRIVER=${driver}）。请设置 DATABASE_URL 且 CLOUD_STORE_DRIVER=postgres（或省略 driver 并配置 DATABASE_URL）`,
     );
   }
+
+  validateRateLimitConfig(errors);
 
   if (errors.length > 0) {
     console.error("[check:prod-env] 生产配置校验失败:");

@@ -1,4 +1,4 @@
-# 八字外部金标准与来源（T262）
+# 八字金标准与来源（T262 / TASK-004）
 
 ## 1. 引擎与流派元数据
 
@@ -47,13 +47,26 @@
 - `strength.*` / `yongshen.*` — 规则层
 - `wuxing.visual_weights.v1` — 可视化分数免责
 
-## 4. 敏感性与后续外部集
+## 4. 敏感性与外部验证边界
 
 - 函数：`buildHourSensitivityReport` / `formatHourSensitivityDiff`（`src/lib/bazi/sensitivity.ts`）
 - 测试：`src/lib/bazi/sensitivity.test.ts`
-- **未完成**：≥1000 例外部门户案例（需标注门户版本、允许差异字段）；本波次以 fixtures 元数据 + 敏感性测试落地
+- 当前 9 条 `goldenCases` 均为 `engine-regression`，不是外部样本；数量不能计入独立验证。
+- **未完成**：≥1000 例外部门户案例。当前仓库没有该 corpus、门户版本、原始许可或允许差异清单，因此不得填写数量或把内部 case 改标为 `external`。
+- Bazi 独立 oracle gate：**未建立**。TASK-004 本波次只建立 Ziwei 的 iztro gate；Bazi 必须在获得可审计 corpus 后另行增加 gate。
 
-## 5. 规则变更 diff 约定
+## 5. 来源与许可证审计（TASK-004）
+
+| 来源 | 当前状态 | 许可证/可审计边界 |
+|------|----------|------------------|
+| `jinchenma94/bazi-skill` | 本地 `.claude/skills/bazi/`；`src/lib/bazi/references/` 由 `scripts/sync-bazi-skill.mjs` 只读同步 | 本地 `LICENSE` 为 MIT，版权 `Copyright (c) 2025 jinchenma94`；同步内容不是外部排盘 oracle，远端分支/提交未锁定 |
+| 《穷通宝典》等九种典籍摘要 | 本地 skill/reference 的规则摘要 | 典籍原作与现代整理本的版本、版权和许可不等同；本项目只保留规则摘要，不把摘要当作可复现的外部样本集 |
+| 外部门户案例（计划 ≥1000） | 未获取 | 没有来源 URL、导出版本、授权条款、样本哈希或允许差异，当前不得纳入门禁 |
+
+`bazi-skill` 的 MIT 文本在 `.claude/skills/bazi/LICENSE`、`.agents/skills/bazi/LICENSE` 和
+`THIRD_PARTY_NOTICES.md` 保留。任何未来外部 corpus 必须同时记录来源、版本/提交、学校、字段 schema、许可证/授权、样本计数和哈希；未满足前只能声明“内部回归”。
+
+## 6. 规则变更 diff 约定
 
 1. 修改排盘/大运/十神规则后必须跑：`npm test -- src/lib/bazi`
 2. golden 失败时：更新 `__fixtures__/index.ts` 期望值，并在本文件或 PR 说明差异原因与 `ruleSetVersion` 变更

@@ -81,6 +81,8 @@ describe("parseJsonBody", () => {
         id: "p1",
         name: "张三",
         gender: "male",
+        solarDate: "1990-01-01",
+        alive: true,
         analysisBaseDate: "2026-01-01",
         useTrueSolarTime: false,
       },
@@ -102,5 +104,24 @@ describe("parseJsonBody", () => {
     if (!r.ok) {
       expect(r.message).toMatch(/不一致|profileId/);
     }
+  });
+
+  it("content-length 超限时在读取 body 前返回 413", async () => {
+    const req = makeRequest({ a: "ok" }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": String(DEFAULT_MAX_BODY_BYTES + 1),
+      },
+    });
+    const r = await parseJsonBody(req, z.object({ a: z.string() }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.status).toBe(413);
+  });
+
+  it("按 UTF-8 字节而非字符数限制 body", async () => {
+    const req = makeRequest({ a: "你".repeat(400) });
+    const r = await parseJsonBody(req, z.object({ a: z.string() }), 1_000);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.status).toBe(413);
   });
 });

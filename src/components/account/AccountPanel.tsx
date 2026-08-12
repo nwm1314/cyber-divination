@@ -26,7 +26,8 @@ function downloadJson(filename: string, data: unknown) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Let the browser finish resolving the blob URL before releasing it.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function AccountPanel({ session }: Props) {

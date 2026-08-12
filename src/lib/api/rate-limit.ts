@@ -17,8 +17,11 @@
  */
 
 import { Redis } from "@upstash/redis";
+import { isIP } from "node:net";
 
 export type RateLimitBucket = "reading" | "share" | "auth" | "account";
+
+export type RateLimitIdentityMode = "direct" | "trusted-proxy";
 
 export type RateLimitConfig = {
   max: number;
@@ -219,12 +222,43 @@ export function rateLimit(
 }
 
 /** 从请求头解析客户端标识（IP） */
+/**
+ * Resolve the deployment mode used for rate-limit identity.
+ *
+ * Direct mode deliberately ignores forwarding headers because a caller can
+ * set them when the application is reached without a trusted proxy. In a
+ * trusted-proxy deployment, the proxy must overwrite the IP headers before
+ * forwarding the request to the application.
+ */
+export function getRateLimitIdentityMode(): RateLimitIdentityMode {
+  const raw = process.env.RATE_LIMIT_TRUSTED_PROXY?.trim();
+  if (!raw || raw === "0") return "direct";
+  if (raw === "1") return "trusted-proxy";
+  throw new Error(
+    `无效的 RATE_LIMIT_TRUSTED_PROXY="${raw}"，仅支持 0（直连）或 1（可信代理）`,
+  );
+}
+
+function normalizeIp(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value || value.length > 64 || value.includes(",")) return null;
+  return isIP(value) > 0 ? value : null;
+}
+
+/** 从请求头解析客户端标识；直连模式永远不信任客户端可控的转发头。 */
 export function clientKeyFromRequest(headers: Headers): string {
-  const ip =
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip")?.trim() ||
-    "anon";
-  return ip.slice(0, 64);
+  if (getRateLimitIdentityMode() === "direct") return "anon";
+
+  // X-Real-IP is a single-hop value in the supported proxy examples. Keep
+  // X-Forwarded-For as a compatibility fallback for proxies that do not set
+  // X-Real-IP; the proxy trust boundary must overwrite it, not append to it.
+  const realIp = normalizeIp(headers.get("x-real-ip") ?? undefined);
+  if (realIp) return realIp;
+
+  const forwardedIp = normalizeIp(
+    headers.get("x-forwarded-for")?.split(",", 1)[0],
+  );
+  return forwardedIp ?? "anon";
 }
 
 export function rateLimitResponseHeaders(result: RateLimitResult): Record<string, string> {

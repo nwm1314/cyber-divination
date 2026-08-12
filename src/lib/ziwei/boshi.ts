@@ -5,7 +5,6 @@
 import type { Dizhi, ZiweiStar } from "@/lib/types/ziwei";
 import type { Tiangan } from "./tables/constants";
 import {
-  BOSHI_TWELVE,
   boshiAtYin,
   placeBoshiTwelve,
   type BoshiStarName,

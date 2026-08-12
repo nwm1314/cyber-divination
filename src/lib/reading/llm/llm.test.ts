@@ -265,6 +265,7 @@ describe("llmReading", () => {
           source: "engine",
           conclusion: "扶抑用木",
           confidence: 0.8,
+          condition: "日主身弱且木为扶助方向",
         },
       ],
       warnings: ["测试警告"],
@@ -291,6 +292,12 @@ describe("llmReading", () => {
     expect(report.evidence?.[0]?.ruleId).toBe("yongshen.fuyi.v1");
     expect(report.warnings).toContain("测试警告");
     expect(report.sections[0]!.body).toContain("结构化");
+    const advice = report.sections.find((section) => section.key === "advice")!.body;
+    expect(advice).toContain("盘面依据与适用边界");
+    expect(advice).toContain("yongshen.fuyi.v1");
+    expect(advice).toContain("适用条件：日主身弱且木为扶助方向");
+    expect(advice).toContain("仅供传统文化学习与娱乐参考");
+    expect(advice).toContain("健康问题请就医");
 
     vi.unstubAllGlobals();
     delete process.env.LLM_API_KEY;

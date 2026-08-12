@@ -1,6 +1,8 @@
 export {
   checkBodySize,
   parseViewMode,
+  stripAuthorityInput,
+  validateAuthoritativeBaziRequest,
   validateChartPayload,
   validateLiuyaoChartPayload,
   validateZiweiChartPayload,

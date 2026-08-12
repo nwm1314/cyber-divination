@@ -88,4 +88,29 @@ describe("assertSameOrigin", () => {
     );
     expect(err).toBeNull();
   });
+
+  it("不信任未配置边界的 X-Forwarded-Host", () => {
+    setNodeEnv("production");
+    delete process.env.AUTH_URL;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    const err = assertSameOrigin(
+      makeReq("POST", {
+        "x-forwarded-host": "app.example.com",
+        origin: "https://app.example.com",
+      }),
+    );
+    expect(err).toMatch(/Origin/);
+  });
+
+  it("Origin 存在但无法解析时不回退到 Referer", () => {
+    setNodeEnv("production");
+    const err = assertSameOrigin(
+      makeReq("POST", {
+        host: "app.example.com",
+        origin: "null",
+        referer: "https://app.example.com/account",
+      }),
+    );
+    expect(err).toMatch(/解析|Origin/);
+  });
 });

@@ -5,6 +5,7 @@ import {
   deleteCloudLiuyao,
   getCloudLiuyao,
 } from "@/lib/storage/cloud-liuyao-store";
+import { assertSameOrigin } from "@/lib/api";
 
 function unauthorized() {
   return NextResponse.json(
@@ -45,12 +46,36 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 
 /** DELETE /api/liuyao-charts/[id] */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
+  const originErr = assertSameOrigin(request);
+  if (originErr) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.AUTH_FORBIDDEN,
+          message: originErr,
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
     return unauthorized();
   }
   const { id } = await ctx.params;
+  if (!id) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.NOT_FOUND,
+          message: "缺少档案 id",
+        },
+      },
+      { status: 400 },
+    );
+  }
   const deleted = await deleteCloudLiuyao(session.userId, id);
   if (!deleted) {
     return NextResponse.json(

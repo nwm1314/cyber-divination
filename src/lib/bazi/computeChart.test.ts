@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeChart, ENGINE_VERSION, SKILL_REF } from "./index";
+import {
+  chartMatchesProfile,
+  computeAuthoritativeChart,
+  computeChart,
+  ENGINE_VERSION,
+  SKILL_REF,
+} from "./index";
 import type { BirthProfile } from "@/lib/types";
 
 function makeProfile(overrides?: Partial<BirthProfile>): BirthProfile {
@@ -18,6 +24,19 @@ function makeProfile(overrides?: Partial<BirthProfile>): BirthProfile {
 }
 
 describe("computeChart", () => {
+  it("服务端 authority 从出生资料重算并识别伪造派生结果", () => {
+    const profile = makeProfile();
+    const authoritative = computeAuthoritativeChart(profile);
+    expect(authoritative).toEqual(computeChart(profile));
+    expect(chartMatchesProfile(profile, authoritative)).toBe(true);
+    expect(
+      chartMatchesProfile(profile, {
+        ...authoritative,
+        dayMaster: "伪造",
+      }),
+    ).toBe(false);
+  });
+
   it("1990-05-15 庚午男 完整排盘", () => {
     const chart = computeChart(makeProfile());
 
@@ -25,6 +44,9 @@ describe("computeChart", () => {
     expect(chart.profileId).toBe("test-001");
     expect(chart.meta.engineVersion).toBe(ENGINE_VERSION);
     expect(chart.meta.skillRef).toBe(SKILL_REF);
+    expect(chart.meta.provenance?.skillRef).toBe(SKILL_REF);
+    expect(chart.meta.provenance?.referenceHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(chart.meta.provenance?.execution).toBe("deterministic-project-engine");
 
     // pillars
     expect(chart.pillars.year.stem).toBe("庚");

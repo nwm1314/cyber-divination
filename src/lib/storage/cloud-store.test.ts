@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import type { BirthProfile, BaziChart, ReadingReport } from "@/lib/types";
 import type { CalibrationData } from "@/lib/reading/calibrate";
+import { computeAuthoritativeChart } from "@/lib/bazi";
 import {
   deleteAllCloudChartsForUser,
   deleteCloudChart,
@@ -108,6 +109,39 @@ describe("cloud-store CRUD（T82）", () => {
 
     const got = await getCloudChart("user-a", "p-001");
     expect(got?.profile.name).toBe("张三");
+  });
+
+  it("replaces forged chart facts with the server computation", async () => {
+    const p = mockProfile();
+    const rec = await upsertCloudChart("user-a", {
+      profile: p,
+      chart: mockChart({
+        dayMaster: "伪造",
+        meta: { engineVersion: "forged", skillRef: "bazi-skill" },
+      }),
+    });
+
+    expect(rec.chart).toEqual(computeAuthoritativeChart(p));
+    expect(rec.chart.dayMaster).not.toBe("伪造");
+    expect(rec.chart.meta.engineVersion).not.toBe("forged");
+  });
+
+  it("does not attach a report or calibration to another chart", async () => {
+    await expect(
+      upsertCloudChart("user-a", {
+        profile: mockProfile(),
+        chart: mockChart(),
+        report: mockReport({ chartId: "other-profile" }),
+      }),
+    ).rejects.toThrow(/report\.chartId/);
+
+    await expect(
+      upsertCloudChart("user-a", {
+        profile: mockProfile(),
+        chart: mockChart(),
+        calibration: mockCalib({ chartId: "other-profile" }),
+      }),
+    ).rejects.toThrow(/calibration\.chartId/);
   });
 
   it("用户隔离：user-b 看不到 user-a 的档案", async () => {

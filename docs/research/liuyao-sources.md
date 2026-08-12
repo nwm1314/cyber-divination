@@ -61,16 +61,26 @@ UI：`CastForm` 明确三种方法说明；时间法展示混合标识。
 - 暗动、飞神细断文案引擎
 - 多流派可切换规则包
 
+以上项目明确不纳入当前 v1 支持范围，而不是已完成的专业全量状态机。
+`src/lib/liuyao/analyze/scope.ts` 导出这些边界，且模板在每份解读中显示。
+若未来实现其中任一规则，必须新增独立或文档化验证、更新
+`ruleSetVersion`，并记录与现有结果的差异；当前输出不得把未覆盖规则推断
+成确定结论。
+
 ---
 
-## 4. 外部金标准（T282）
+## 4. 外部金标准边界（T282 / TASK-004）
 
 | 项 | 做法 |
 |----|------|
 | fixture 元数据 | `LIUYAO_GOLDEN_META`：source / school / dataVersion / ruleSetVersion / references |
 | 八宫/世应 | 64 卦穷举：`palace-exhaustive.test.ts` |
 | 纳甲六亲 | 64 卦 `assignLiuqin` 确定性 |
-| 规则 diff | 改 `PALACE_*` / `TRIGRAM_NAJIA` / `YONGSHEN_RULES` 时由单测 id 定位 |
+| 规则 diff | 改 `PALACE_*` / `TRIGRAM_NAJIA` / `YONGSHEN_RULES` 时由单测 id 定位 | 这是内部规则回归，不是外部 oracle 验证 |
+
+**重要边界：** 当前没有独立 Liuyao 排盘 oracle、外部案例 corpus、固定外部版本或可核验授权数据。`golden-cases.ts` 的 10 条 case 标记为 `project-internal`，64 卦穷举也只证明本仓表驱动规则的完备性；两者均不得计入外部样本数或写成“专业规则已外部验证”。
+
+候选来源（京房八宫、纳甲通行表、《增删卜易》《卜筮正宗》等）目前只作为规则说明锚点：文档没有绑定具体版本/版次、URL、现代整理版权或许可证，因此本仓只保留自有的中性摘要和表驱动代码，不复制现代注释，也不把这些摘要冒充独立测试数据。后续若引入外部 corpus，必须记录来源版本、学校、字段 schema、许可证/授权、样本哈希、允许差异和失败 diff；在此之前 Liuyao 的独立 gate 保持 **未建立**。
 
 **非目标：** 逐盘对齐某一商业 App 断语；外部闭源库不作为运行时依赖。
 

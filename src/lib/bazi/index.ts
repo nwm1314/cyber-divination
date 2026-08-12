@@ -4,6 +4,7 @@ import type {
   TenGodByPosition,
   RuleEvidence,
 } from "@/lib/types";
+import type { BaziAuthorityInput } from "@/lib/contracts/charts";
 import { buildPillars } from "./pillars";
 import { computeDayun } from "./dayun";
 import { calcTrueSolarTime } from "./solar-time";
@@ -30,6 +31,7 @@ import {
   BAZI_SCHOOL,
   DEFAULT_CALENDAR_POLICY,
 } from "./policy";
+import { BAZI_SKILL_PROVENANCE } from "./references/manifest";
 import { computeYongshen } from "./yongshen";
 
 export const ENGINE_VERSION = BAZI_ENGINE_VERSION;
@@ -140,14 +142,69 @@ function deriveTenGod(dayMaster: string, otherStem: string): string {
   return TEN_GOD_MAP[rel][sameYinYang ? 0 : 1];
 }
 
+function authorityInputFromProfile(profile: BirthProfile): BaziAuthorityInput {
+  const input: BaziAuthorityInput = {
+    id: profile.id,
+    name: profile.name,
+    gender: profile.gender,
+    analysisBaseDate: profile.analysisBaseDate,
+    useTrueSolarTime: profile.useTrueSolarTime,
+    solarDate: profile.solarDate!,
+    alive: profile.alive,
+    shichenUnknown: profile.shichenUnknown,
+  };
+  if (profile.formerName !== undefined) input.formerName = profile.formerName;
+  if (profile.renameYear !== undefined) input.renameYear = profile.renameYear;
+  if (profile.lunarDate !== undefined) input.lunarDate = profile.lunarDate;
+  if (profile.isLeapMonth !== undefined) input.isLeapMonth = profile.isLeapMonth;
+  if (profile.birthTime !== undefined) input.birthTime = profile.birthTime;
+  if (profile.deathYear !== undefined) input.deathYear = profile.deathYear;
+  if (profile.birthPlace !== undefined) {
+    input.birthPlace = { ...profile.birthPlace };
+  }
+  return input;
+}
+
+type ChartMetaWithAuthority = BaziChart["meta"] & {
+  authoritativeInput?: BaziAuthorityInput;
+};
+
+function attachAuthorityInput(
+  chart: BaziChart,
+  profile: BirthProfile,
+): BaziChart {
+  return {
+    ...chart,
+    meta: {
+      ...chart.meta,
+      authoritativeInput: authorityInputFromProfile(profile),
+    },
+  } as BaziChart;
+}
+
+/** Remove raw birth details before sending the chart to an external LLM. */
+export function stripAuthorityInput(chart: BaziChart): BaziChart {
+  const meta = (chart.meta ?? {}) as ChartMetaWithAuthority;
+  const safeMeta = { ...meta };
+  delete safeMeta.authoritativeInput;
+  return { ...chart, meta: safeMeta } as BaziChart;
+}
+
 export function computeChart(profile: BirthProfile): BaziChart {
-  if (!profile.solarDate) {
+  const solarDate = profile.solarDate;
+  if (!solarDate) {
     throw new Error("solarDate is required");
   }
+  // Normalize the omitted-hour representation once, so browser and server
+  // computations produce the same authority input and deterministic chart.
+  profile = {
+    ...profile,
+    shichenUnknown: profile.shichenUnknown ?? !profile.birthTime,
+  };
   // 严格日期校验（含非法日）
-  parseSolarDate(profile.solarDate);
+  parseSolarDate(solarDate);
 
-  let effectiveSolarDate = profile.solarDate;
+  let effectiveSolarDate = solarDate;
   let effectiveBirthTime = profile.birthTime;
   const flagsExtra: string[] = [];
   const warnings: string[] = [];
@@ -161,7 +218,7 @@ export function computeChart(profile: BirthProfile): BaziChart {
     if (profile.birthPlace?.lng != null && Number.isFinite(profile.birthPlace.lng)) {
       const tst = calcTrueSolarTime(
         profile.birthPlace.lng,
-        profile.solarDate,
+        solarDate,
         profile.birthTime,
       );
       effectiveSolarDate = tst.solarDate;
@@ -395,6 +452,7 @@ export function computeChart(profile: BirthProfile): BaziChart {
       ruleSetVersion: BAZI_RULE_SET_VERSION,
       school: BAZI_SCHOOL,
       calendarPolicy: { ...DEFAULT_CALENDAR_POLICY },
+      provenance: BAZI_SKILL_PROVENANCE,
     },
   };
 
@@ -420,9 +478,28 @@ export function computeChart(profile: BirthProfile): BaziChart {
     ...(yong.evidence ?? []),
   ];
 
-  return {
+  const chart: BaziChart = {
     ...partialChart,
     yongshenLayered: yong.layered,
     evidence: baseEvidence,
   };
+  return attachAuthorityInput(chart, profile);
+}
+
+/**
+ * Server-side authority boundary. The browser may calculate an instant chart
+ * for responsiveness, but every persisted/narrated chart must be regenerated
+ * from the validated BirthProfile before it is trusted.
+ */
+export function computeAuthoritativeChart(profile: BirthProfile): BaziChart {
+  return computeChart(profile);
+}
+
+/** Compare only after recomputing; callers may replace the submitted chart. */
+export function chartMatchesProfile(
+  profile: BirthProfile,
+  submitted: unknown,
+): boolean {
+  if (!submitted || typeof submitted !== "object") return false;
+  return JSON.stringify(computeAuthoritativeChart(profile)) === JSON.stringify(submitted);
 }

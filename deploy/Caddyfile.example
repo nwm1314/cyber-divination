@@ -6,16 +6,23 @@
 
 app.example.com {
     # 反向代理（Caddy 自动处理 HTTPS）
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:3000 {
+        # Overwrite, do not append, so RATE_LIMIT_TRUSTED_PROXY=1 is safe.
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+    }
 
     # 压缩
     encode gzip zstd
 
     # 安全头
     header {
-        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        # Keep this policy byte-for-byte aligned with next.config.ts. This
+        # site block is HTTPS-only, so it owns the HSTS response header.
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
+        X-XSS-Protection "0"
         Referrer-Policy "strict-origin-when-cross-origin"
         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
         Permissions-Policy "camera=(), microphone=(), geolocation=()"

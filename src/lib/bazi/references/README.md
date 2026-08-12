@@ -1,8 +1,8 @@
-# bazi skill references（只读同步）
+# bazi skill references (read-only sync)
 
-权威源：`.claude/skills/bazi/references`
+Authoritative source: the repository's bazi skill reference directory.
 
-请勿手改本目录。更新 skill 后执行：
+Do not edit this directory by hand. After updating the skill, run:
 
 ```bash
 npm run sync:skill

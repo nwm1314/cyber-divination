@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   checkRateLimit,
+  clientKeyFromRequest,
   createRateLimiter,
+  getRateLimitIdentityMode,
   getMemoryRateLimiter,
   getRateLimitConfig,
   rateLimit,
@@ -73,6 +75,47 @@ describe("rate-limit config", () => {
     getMemoryRateLimiter().reset();
     expect(rateLimit("legacy:1", 1, 60_000)).toBe(true);
     expect(rateLimit("legacy:1", 1, 60_000)).toBe(false);
+  });
+});
+
+describe("rate-limit identity", () => {
+  it("直连模式忽略伪造的 forwarded headers", () => {
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+    const headers = new Headers({
+      "x-forwarded-for": "203.0.113.10",
+      "x-real-ip": "198.51.100.20",
+    });
+
+    expect(getRateLimitIdentityMode()).toBe("direct");
+    expect(clientKeyFromRequest(headers)).toBe("anon");
+  });
+
+  it("可信代理模式使用代理提供的真实 IP", () => {
+    process.env.RATE_LIMIT_TRUSTED_PROXY = "1";
+    const headers = new Headers({
+      "x-forwarded-for": "203.0.113.10, 10.0.0.2",
+      "x-real-ip": "198.51.100.20",
+    });
+
+    expect(getRateLimitIdentityMode()).toBe("trusted-proxy");
+    expect(clientKeyFromRequest(headers)).toBe("198.51.100.20");
+  });
+
+  it("可信代理模式兼容仅提供 X-Forwarded-For 的代理，并拒绝非法值", () => {
+    process.env.RATE_LIMIT_TRUSTED_PROXY = "1";
+    expect(
+      clientKeyFromRequest(
+        new Headers({ "x-forwarded-for": "203.0.113.10, 10.0.0.2" }),
+      ),
+    ).toBe("203.0.113.10");
+    expect(
+      clientKeyFromRequest(new Headers({ "x-forwarded-for": "not-an-ip" })),
+    ).toBe("anon");
+  });
+
+  it("拒绝未支持的代理模式配置", () => {
+    process.env.RATE_LIMIT_TRUSTED_PROXY = "yes";
+    expect(() => clientKeyFromRequest(new Headers())).toThrow(/RATE_LIMIT_TRUSTED_PROXY/);
   });
 });
 

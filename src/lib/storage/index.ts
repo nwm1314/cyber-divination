@@ -4,6 +4,7 @@ import type { CalibrationData } from "@/lib/reading/calibrate";
 import { idbDel, idbSet } from "./idb";
 import { isAccountPersistMode } from "./mode";
 import { kvGet, kvGetJson, kvRemove, kvSet, kvSetJson } from "./kv";
+import { deleteLiuyaoChart } from "./liuyao";
 
 const PREFIX_PROFILE = "bd_profile_";
 const PREFIX_CHART = "bd_chart_";
@@ -162,6 +163,21 @@ export function deleteZiweiChart(id: string): void {
   kvRemove(PREFIX_ZIWEI + id);
   removeIdb(PREFIX_ZIWEI + id);
   setZiweiList(getZiweiList().filter((e) => e.chartId !== id));
+}
+
+export type LocalArchiveKind = "bazi" | "ziwei" | "liuyao";
+
+/** Delete exactly one archive from the active browser-side store. */
+export function deleteLocalArchive(kind: LocalArchiveKind, id: string): void {
+  if (kind === "bazi") {
+    deleteChart(id);
+    return;
+  }
+  if (kind === "ziwei") {
+    deleteZiweiChart(id);
+    return;
+  }
+  deleteLiuyaoChart(id);
 }
 
 export {

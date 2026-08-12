@@ -15,6 +15,29 @@ function hasDatabaseUrl(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
 }
 
+function validateRateLimitConfig(errors: string[]): void {
+  const driver = (process.env.RATE_LIMIT_DRIVER ?? "").trim().toLowerCase();
+  if (driver !== "redis") {
+    errors.push(
+      "生产必须设置 RATE_LIMIT_DRIVER=redis；禁止静默使用 memory 限流（多实例保护）",
+    );
+  } else {
+    if (!process.env.UPSTASH_REDIS_REST_URL?.trim()) {
+      errors.push("RATE_LIMIT_DRIVER=redis 时必须配置 UPSTASH_REDIS_REST_URL");
+    }
+    if (!process.env.UPSTASH_REDIS_REST_TOKEN?.trim()) {
+      errors.push("RATE_LIMIT_DRIVER=redis 时必须配置 UPSTASH_REDIS_REST_TOKEN");
+    }
+  }
+
+  const trustedProxy = process.env.RATE_LIMIT_TRUSTED_PROXY?.trim();
+  if (trustedProxy !== "0" && trustedProxy !== "1") {
+    errors.push(
+      "生产必须明确设置 RATE_LIMIT_TRUSTED_PROXY=0（直连）或 1（可信代理）",
+    );
+  }
+}
+
 /**
  * 生产环境是否允许 file 作为账号/云端主存储。
  * - CLOUD_STORE_DRIVER=file → 禁止
@@ -53,6 +76,8 @@ export function validateProductionConfig(): void {
       `生产禁止以 file 作为账号/云端主存储（CLOUD_STORE_DRIVER=${driver}）。请设置 DATABASE_URL 且 CLOUD_STORE_DRIVER=postgres（或省略 driver 并配置 DATABASE_URL）`,
     );
   }
+
+  validateRateLimitConfig(errors);
 
   if (errors.length > 0) {
     throw new Error(

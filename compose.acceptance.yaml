@@ -1,0 +1,59 @@
+name: cyber-divination-acceptance
+
+services:
+  redis-rest:
+    image: node:20.19.4-alpine
+    command: ["node", "/app/redis-rest-stub.mjs"]
+    volumes:
+      - ./scripts/redis-rest-stub.mjs:/app/redis-rest-stub.mjs:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/ping').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cyber
+      POSTGRES_PASSWORD: cyber
+      POSTGRES_DB: cyber_divination
+    volumes:
+      - acceptance_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyber -d cyber_divination"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    environment:
+      DATABASE_URL: postgres://cyber:cyber@db:5432/cyber_divination
+      CLOUD_STORE_DRIVER: postgres
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    ports: !override
+      - "127.0.0.1:18081:3000"
+    environment:
+      AUTH_SECRET: acceptance-only-auth-secret
+      AUTH_ALLOW_DEV_LOGIN: "0"
+      DATABASE_URL: postgres://cyber:cyber@db:5432/cyber_divination
+      CLOUD_STORE_DRIVER: postgres
+      DB_SKIP_ENSURE_SCHEMA: "1"
+      SHARE_STORE_DRIVER: local
+      RATE_LIMIT_DRIVER: redis
+      RATE_LIMIT_TRUSTED_PROXY: "0"
+      UPSTASH_REDIS_REST_URL: http://redis-rest:8080
+      UPSTASH_REDIS_REST_TOKEN: acceptance-only-token
+    volumes:
+      - acceptance_app_data:/app/data
+    depends_on:
+      redis-rest:
+        condition: service_healthy
+
+volumes:
+  acceptance_postgres_data:
+  acceptance_app_data:

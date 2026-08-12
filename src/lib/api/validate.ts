@@ -1,11 +1,21 @@
 import type {
+  BirthProfile,
   BaziChart,
   LiuyaoChart,
   ViewMode,
   YaoValue,
   ZiweiChart,
 } from "@/lib/types";
-import { baziChartMinSchema } from "@/lib/contracts/charts";
+import {
+  baziAuthorityInputSchema,
+  baziBirthProfileSchema,
+  baziChartMinSchema,
+  baziReadingRequestSchema,
+} from "@/lib/contracts/charts";
+import {
+  computeAuthoritativeChart,
+  stripAuthorityInput,
+} from "@/lib/bazi";
 
 const MAX_BODY_BYTES = 200_000;
 
@@ -15,6 +25,74 @@ export function checkBodySize(raw: string): string | null {
   }
   return null;
 }
+
+export type AuthoritativeBaziRequest = {
+  chart: BaziChart;
+  profile: BirthProfile;
+  viewMode: ViewMode;
+  source: "profile" | "embedded";
+};
+
+function embeddedAuthorityInput(chart: unknown): unknown {
+  if (!chart || typeof chart !== "object") return undefined;
+  const meta = (chart as { meta?: unknown }).meta;
+  if (!meta || typeof meta !== "object") return undefined;
+  return (meta as { authoritativeInput?: unknown }).authoritativeInput;
+}
+
+/**
+ * Resolve the trusted Bazi input for persistence-adjacent reading requests.
+ * A submitted chart is only a compatibility carrier for the embedded input;
+ * its derived fields are always discarded and recomputed here.
+ */
+export function validateAuthoritativeBaziRequest(
+  body: unknown,
+): { ok: true; data: AuthoritativeBaziRequest } | { ok: false; message: string } {
+  const parsed = baziReadingRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return { ok: false, message: first?.message ?? "Bazi璇锋眰浣撴棤鏁?" };
+  }
+
+  const source = parsed.data.profile ? "profile" : "embedded";
+  const profileResult = parsed.data.profile
+    ? baziBirthProfileSchema.safeParse(parsed.data.profile)
+    : baziAuthorityInputSchema.safeParse(
+        embeddedAuthorityInput(parsed.data.chart),
+      );
+  if (!profileResult.success) {
+    return {
+      ok: false,
+      message:
+        source === "embedded"
+          ? "legacy 鐩樻棤鏈嶅姟绔潈濞佺敤鎴疯緭鍏ワ紝璇峰悎骞舵柊鐗堟。妗ｆ垨浣跨敤妯℃澘瑙ｈ"
+          : profileResult.error.issues[0]?.message ?? "Bazi 鐢熷嚭淇℃伅鏃犳晥",
+    };
+  }
+
+  const profile = profileResult.data as BirthProfile;
+  let chart: BaziChart;
+  try {
+    chart = computeAuthoritativeChart(profile);
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Bazi 鍛界洏璁＄畻澶辫触",
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      chart,
+      profile,
+      viewMode: parseViewMode(parsed.data.viewMode),
+      source,
+    },
+  };
+}
+
+export { stripAuthorityInput };
 
 export function validateChartPayload(
   chart: unknown,

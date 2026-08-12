@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { ErrorCode } from "@/lib/types";
 import { llmZiweiReading, renderZiweiTemplateReading } from "@/lib/reading/ziwei";
 import {
-  checkBodySize,
+  assertSameOrigin,
   checkRateLimit,
   clientKeyFromRequest,
   logApi,
   parseViewMode,
+  parseJsonBody,
   rateLimitResponseHeaders,
   requestIdHeader,
   resolveRequestId,
   validateZiweiChartPayload,
 } from "@/lib/api";
+
+const ziweiReadingBodySchema = z.object({
+  chart: z.unknown(),
+  viewMode: z.enum(["plain", "pro"]).optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  mode: z.enum(["template", "llm"]).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const started = Date.now();
@@ -20,6 +29,19 @@ export async function POST(request: NextRequest) {
   const rid = requestIdHeader(requestId);
 
   try {
+    const originErr = assertSameOrigin(request);
+    if (originErr) {
+      return NextResponse.json(
+        {
+          error: {
+            code: ErrorCode.AUTH_FORBIDDEN,
+            message: originErr,
+          },
+        },
+        { status: 403, headers: rid },
+      );
+    }
+
     const rl = await checkRateLimit("reading", clientKey);
     if (!rl.allowed) {
       logApi("warn", "api.rate_limited", {
@@ -45,49 +67,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const raw = await request.text();
-    const sizeErr = checkBodySize(raw);
-    if (sizeErr) {
+    const parsed = await parseJsonBody(request, ziweiReadingBodySchema);
+    if (!parsed.ok) {
+      const message = parsed.message;
       logApi("warn", "api.reading.ziwei.reject", {
         requestId,
         route: "/api/reading/ziwei",
-        status: 413,
+        status: parsed.status,
         durationMs: Date.now() - started,
         clientKey,
         errorCode: ErrorCode.INVALID_PROFILE,
-        message: sizeErr,
+        message,
       });
       return NextResponse.json(
-        { error: { code: ErrorCode.INVALID_PROFILE, message: sizeErr } },
-        { status: 413, headers: rid },
+        { error: { code: ErrorCode.INVALID_PROFILE, message } },
+        { status: parsed.status, headers: rid },
       );
     }
 
-    let body: {
-      chart?: unknown;
-      viewMode?: unknown;
-      gender?: unknown;
-      mode?: unknown;
-    };
-    try {
-      body = JSON.parse(raw) as {
-        chart?: unknown;
-        viewMode?: unknown;
-        gender?: unknown;
-        mode?: unknown;
-      };
-    } catch {
-      return NextResponse.json(
-        {
-          error: {
-            code: ErrorCode.INVALID_PROFILE,
-            message: "JSON 解析失败",
-          },
-        },
-        { status: 400, headers: rid },
-      );
-    }
-
+    const body = parsed.data;
     const v = validateZiweiChartPayload(body.chart);
     if (!v.ok) {
       return NextResponse.json(

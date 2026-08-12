@@ -8,6 +8,8 @@ import {
 import type { CloudChartUpsertBody } from "@/lib/storage/cloud-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
 import { cloudChartUpsertSchema } from "@/lib/contracts";
+import { computeAuthoritativeChart } from "@/lib/bazi";
+import type { BirthProfile } from "@/lib/types";
 
 function unauthorized() {
   return NextResponse.json(
@@ -67,17 +69,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const profile = {
+    ...parsed.data.profile,
+    id: parsed.data.profile.id,
+    userId: session.userId,
+  } as BirthProfile;
+  let authoritativeChart: ReturnType<typeof computeAuthoritativeChart>;
+  try {
+    authoritativeChart = computeAuthoritativeChart(profile);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.INVALID_PROFILE,
+          message: error instanceof Error ? error.message : "出生资料无法排盘",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   // 服务端权威：强制 profile.userId = session；忽略客户端伪造
   const body: CloudChartUpsertBody = {
     profile: {
-      ...parsed.data.profile,
-      id: parsed.data.profile.id,
-      userId: session.userId,
-    } as CloudChartUpsertBody["profile"],
-    chart: {
-      ...parsed.data.chart,
-      profileId: parsed.data.profile.id,
-    } as CloudChartUpsertBody["chart"],
+      ...profile,
+    },
+    chart: authoritativeChart,
     report: parsed.data.report as CloudChartUpsertBody["report"],
     calibration: parsed.data.calibration as CloudChartUpsertBody["calibration"],
   };

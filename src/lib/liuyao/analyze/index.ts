@@ -14,7 +14,6 @@ import { resolveGuaRef } from "../cast/resolve-gua";
 import type { YaoValue } from "@/lib/types/liuyao";
 import { shiYingFromBinary } from "./shi-ying";
 import {
-  resolveYongShen,
   resolveYongShenDetail,
   type YongShenResolved,
 } from "./yongshen";
@@ -32,6 +31,10 @@ import { assignLiushen } from "./liushen";
 import { resolveFushen } from "./fushen";
 import { resolveBranchFlags } from "./yuepo";
 import type { Liuqin } from "./liuqin";
+export {
+  LIUYAO_RULE_SCOPE_NOTE,
+  LIUYAO_UNSUPPORTED_RULES,
+} from "./scope";
 
 export {
   PALACE_ROOTS,

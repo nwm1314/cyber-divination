@@ -11,7 +11,6 @@ import { toAppSession } from "./types";
 import type { AppSession, User, UserId } from "@/lib/types/user";
 import {
   DEV_AUTH_SECRET_FALLBACK,
-  SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SEC,
 } from "./constants";
 

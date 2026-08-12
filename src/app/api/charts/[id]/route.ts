@@ -5,6 +5,7 @@ import {
   deleteCloudChart,
   getCloudChart,
 } from "@/lib/storage/cloud-store";
+import { assertSameOrigin } from "@/lib/api";
 
 function unauthorized() {
   return NextResponse.json(
@@ -59,6 +60,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /** DELETE /api/charts/[id] — 删除本人档案 */
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  const originErr = assertSameOrigin(request);
+  if (originErr) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.AUTH_FORBIDDEN,
+          message: originErr,
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {

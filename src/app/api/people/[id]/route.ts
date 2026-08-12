@@ -6,7 +6,8 @@ import {
   getCloudPerson,
   upsertCloudPerson,
 } from "@/lib/storage/cloud-person-store";
-import type { PersonInput } from "@/lib/types/user";
+import { assertSameOrigin, parseJsonBody } from "@/lib/api";
+import { personInputSchema } from "@/lib/contracts";
 
 function unauthorized() {
   return NextResponse.json(
@@ -61,6 +62,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /** PUT /api/people/[id] — 全量更新（含关联 chartIds / ziweiIds） */
 export async function PUT(request: NextRequest, context: RouteContext) {
+  const originErr = assertSameOrigin(request);
+  if (originErr) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.AUTH_FORBIDDEN,
+          message: originErr,
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
@@ -80,26 +94,24 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     );
   }
 
-  let body: PersonInput;
-  try {
-    body = (await request.json()) as PersonInput;
-  } catch {
+  const parsed = await parseJsonBody(request, personInputSchema);
+  if (!parsed.ok) {
     return NextResponse.json(
       {
         error: {
           code: ErrorCode.INVALID_PROFILE,
-          message: "请求体无效",
+          message: parsed.message,
         },
       },
-      { status: 400 },
+      { status: parsed.status },
     );
   }
 
   try {
     const person = await upsertCloudPerson(session.userId, {
-      ...body,
+      ...parsed.data,
       id,
-      name: body.name?.trim() || "未命名",
+      name: parsed.data.name.trim(),
     });
     return NextResponse.json({ person });
   } catch (e) {
@@ -118,6 +130,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 /** DELETE /api/people/[id] */
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  const originErr = assertSameOrigin(request);
+  if (originErr) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.AUTH_FORBIDDEN,
+          message: originErr,
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
