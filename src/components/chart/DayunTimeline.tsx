@@ -31,7 +31,7 @@ export function DayunTimeline({
         <p className="text-xs text-muted">
           <span className="text-gold/90 font-medium">{startLabel}</span>
           {hasPre ? (
-            <span className="ml-2 text-muted/70">起运前见「小运」步</span>
+            <span className="ml-2 text-muted/90">起运前见「小运」步</span>
           ) : null}
         </p>
       )}
@@ -50,7 +50,7 @@ export function DayunTimeline({
                 <div
                   className={`flex flex-col items-center px-3 py-2 rounded-lg transition-all ${
                     isCurrent
-                      ? "bg-gold/10 border border-gold/40 shadow-[0_0_16px_var(--gold-glow)]"
+                      ? "bg-gold/10 border border-gold/40 shadow-glow-gold"
                       : isPre
                         ? "bg-surface/60 border border-border/30 border-dashed"
                         : "bg-surface border border-border/40"
@@ -67,7 +67,7 @@ export function DayunTimeline({
                   <span className="text-[10px] text-muted mt-0.5">
                     {step.startAge}–{step.endAge}岁
                   </span>
-                  <span className="text-[10px] text-muted/60">
+                  <span className="text-[10px] text-muted/90">
                     {step.startYear}–{step.endYear}
                   </span>
                   {isFirstFormal && startLabel && (

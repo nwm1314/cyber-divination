@@ -219,7 +219,7 @@ export default function PeoplePage() {
                           {" · "}
                           八字 {item.chartCount} · 紫微 {item.ziweiCount}
                         </p>
-                        <p className="text-[11px] text-muted/80 mt-0.5">
+                        <p className="text-[11px] text-muted/90 mt-0.5">
                           更新 {formatUpdated(item.updatedAt)}
                         </p>
                       </div>

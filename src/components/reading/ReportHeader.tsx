@@ -108,9 +108,9 @@ export function ReportHeader({
                   }}
                   className={`px-4 py-1.5 text-xs font-medium transition-all ${
                     disabled
-                      ? "bg-surface text-muted/50 cursor-not-allowed opacity-60"
+                      ? "bg-surface text-muted/90 cursor-not-allowed opacity-60"
                       : active
-                        ? "bg-gold text-background shadow-[inset_0_0_8px_var(--gold-glow)]"
+                        ? "bg-gold text-background shadow-glow-gold-inset"
                         : "bg-surface text-muted hover:text-foreground"
                   }`}
                 >

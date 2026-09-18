@@ -35,7 +35,7 @@ function ArtCard({ art }: { art: ArtEntry }) {
       <p
         className={[
           "text-xs leading-relaxed mb-4 min-h-[2.5rem]",
-          live ? "text-muted" : "text-muted/60",
+          live ? "text-muted" : "text-muted/90",
         ].join(" ")}
       >
         {art.description}
@@ -44,8 +44,8 @@ function ArtCard({ art }: { art: ArtEntry }) {
         className={[
           "inline-flex h-10 w-full items-center justify-center rounded-lg text-sm font-medium transition-all",
           live
-            ? "bg-gold/15 text-gold border border-gold/40 group-hover:bg-gold group-hover:text-background group-hover:shadow-[0_0_16px_var(--gold-glow)]"
-            : "bg-surface-elevated text-muted/50 border border-border cursor-not-allowed",
+            ? "bg-gold/15 text-gold border border-gold/40 group-hover:bg-gold group-hover:text-background group-hover:shadow-glow-gold"
+            : "bg-surface-elevated text-muted/90 border border-border cursor-not-allowed",
         ].join(" ")}
       >
         {live ? art.cta : HOME.comingSoon}
@@ -60,7 +60,7 @@ function ArtCard({ art }: { art: ArtEntry }) {
         className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan/50"
       >
         <Card
-          className="!p-4 h-full border-gold/20 group-hover:border-gold/45 group-hover:shadow-[0_0_24px_var(--gold-glow)] transition-all"
+          className="!p-4 h-full border-gold/20 group-hover:border-gold/45 group-hover:shadow-glow-gold-lg transition-all"
           glow="none"
         >
           {body}

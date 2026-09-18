@@ -83,7 +83,7 @@ async function ZiweiShareContent({ params }: Props) {
           chartName={snapshot.chartName}
         />
 
-        <p className="text-[10px] text-muted/60 text-center leading-relaxed">
+        <p className="text-[10px] text-muted/90 text-center leading-relaxed">
           排盘为本地确定性引擎（不经 LLM）；签语/解读可为规则模板或 LLM。
         </p>
         <DisclaimerFooter text={snapshot.disclaimer} />

@@ -2,7 +2,7 @@ import type { ZiweiStar } from "@/lib/types/ziwei";
 
 const CATEGORY_CLASS: Record<string, string> = {
   major:
-    "border-gold/50 bg-gold/15 text-gold shadow-[0_0_8px_var(--gold-glow)]",
+    "border-gold/50 bg-gold/15 text-gold shadow-glow-gold-sm",
   soft: "border-cyan/40 bg-cyan/10 text-cyan",
   harsh: "border-danger/40 bg-danger/10 text-danger",
   misc: "border-border bg-surface-elevated text-muted",

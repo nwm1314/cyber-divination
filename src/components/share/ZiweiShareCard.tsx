@@ -18,7 +18,7 @@ export function ZiweiShareCard({ summary, advice, chartName }: Props) {
         <h2 className="text-base font-bold tracking-wider text-gold">
           {chartName}
         </h2>
-        <p className="text-[10px] text-muted/50 mt-0.5">赛博紫微 · 命盘分享</p>
+        <p className="text-[10px] text-muted/90 mt-0.5">赛博紫微 · 命盘分享</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">

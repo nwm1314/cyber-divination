@@ -13,7 +13,7 @@ const variantClass: Record<Variant, string> = {
   primary:
     "bg-gold text-background hover:brightness-110 shadow-[0_0_20px_var(--gold-glow)] border border-gold-dim",
   secondary:
-    "bg-surface-elevated text-cyan border border-cyan/40 hover:bg-cyan/10 shadow-[0_0_16px_var(--cyan-glow)]",
+    "bg-surface-elevated text-cyan border border-cyan/40 hover:bg-cyan/10 shadow-glow-cyan",
   ghost:
     "bg-transparent text-foreground border border-border hover:border-gold/50 hover:text-gold",
   danger:

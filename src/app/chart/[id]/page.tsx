@@ -287,7 +287,7 @@ function ChartPageInner() {
                           .join("、")}
                       </span>
                     </div>
-                    <p className="text-xs text-muted/70 leading-relaxed">
+                    <p className="text-xs text-muted/90 leading-relaxed">
                       {analysis.patternDesc}
                     </p>
                   </div>

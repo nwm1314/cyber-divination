@@ -84,7 +84,7 @@ async function LiuyaoShareContent({ params }: Props) {
           </p>
         </div>
 
-        <p className="text-[10px] text-muted/60 text-center leading-relaxed">
+        <p className="text-[10px] text-muted/90 text-center leading-relaxed">
           装卦为本地确定性引擎（不经 LLM）；签语/解卦可为规则模板或 LLM。
         </p>
         <Disclaimer text={snapshot.disclaimer} />

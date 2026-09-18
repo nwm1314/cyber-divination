@@ -24,7 +24,7 @@ export function SectionCard({ section, index }: Props) {
       </div>
       {section.citations && section.citations.length > 0 && (
         <div className="mt-3 pt-3 border-t border-border/40 max-w-[38rem]">
-          <p className="text-[11px] text-muted/60">
+          <p className="text-[11px] text-muted/90">
             引用：{section.citations.join(" · ")}
           </p>
         </div>

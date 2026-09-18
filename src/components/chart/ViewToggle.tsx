@@ -28,7 +28,7 @@ export function ViewToggle({ value, onChange }: Props) {
             onClick={() => onChange(opt.value)}
             className={`px-4 py-1.5 text-xs font-medium transition-all ${
               active
-                ? "bg-gold text-background shadow-[inset_0_0_8px_var(--gold-glow)]"
+                ? "bg-gold text-background shadow-glow-gold-inset"
                 : "bg-surface text-muted hover:text-foreground"
             }`}
           >

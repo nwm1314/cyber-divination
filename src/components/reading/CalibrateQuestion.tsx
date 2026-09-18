@@ -27,7 +27,7 @@ export function CalibrateQuestion({ prompt, index, value, onChange }: Props) {
         <span className="text-xs text-muted">{prompt.ageRange}</span>
       </div>
       {prompt.yearHint && (
-        <p className="text-xs text-muted/60">对应年份：{prompt.yearHint}</p>
+        <p className="text-xs text-muted/90">对应年份：{prompt.yearHint}</p>
       )}
       <p className="text-sm leading-relaxed">{prompt.nature}</p>
 
@@ -76,7 +76,7 @@ export function CalibrateQuestion({ prompt, index, value, onChange }: Props) {
             });
           }
         }}
-        className="w-full text-xs bg-surface/80 border border-border/50 rounded-lg p-2 resize-none text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/50"
+        className="w-full text-xs bg-surface/80 border border-border/50 rounded-lg p-2 resize-none text-foreground placeholder:text-muted/90 focus:outline-none focus:border-cyan/50"
       />
       {value?.accuracy && (value.note || draftNote) ? (
         <label className="flex items-start gap-2 text-[11px] text-muted cursor-pointer">

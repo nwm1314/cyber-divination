@@ -71,4 +71,4 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full h-11 px-3 rounded-lg bg-surface-elevated border border-border text-foreground placeholder:text-muted/70 focus:outline-none focus:border-cyan/60 focus:ring-1 focus:ring-cyan/40";
+  "w-full h-11 px-3 rounded-lg bg-surface-elevated border border-border text-foreground placeholder:text-muted/90 focus:outline-none focus:border-cyan/60 focus:ring-1 focus:ring-cyan/40";

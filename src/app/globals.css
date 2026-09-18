@@ -6,12 +6,26 @@
   --muted: #8b8680;
   --surface: #12141c;
   --surface-elevated: #1a1d28;
+  /*
+    --border 与 --background 的对比度为 1.48:1，低于 WCAG 1.4.11
+    对"非文本"元素要求的 3:1。
+
+    有意保留原值：把 --border 提到 3:1 需要换成约 #5a6076 的中灰，
+    那会显著改变整体的"低调描边"设计语言（面板/卡片的视觉重量会
+    明显变重），属于设计层面的改动而非无障碍修正。
+
+    缓解措施：所有**承载信息的**边界都有替代的表征——
+    卡片另有 bg-surface 底色差异、选中态走 gold/cyan 高亮环、
+    表单控件有 focus-visible outline。即视觉组织不依赖 --border 单独成立。
+
+    如需严格达标，可单独引入 --border-strong 用于需要可辨识的边界，
+    而不动 --border 的装饰用途。
+  */
   --border: #2a2e3a;
   --gold: #d4a84b;
   --gold-dim: #9a7b2f;
   --gold-glow: rgba(212, 168, 75, 0.35);
   --cyan: #2ee6d6;
-  --cyan-dim: #1a9e94;
   --cyan-glow: rgba(46, 230, 214, 0.28);
   --danger: #e85d5d;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -19,7 +33,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --radius: 0.75rem;
-  --font-display: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  /* --font-display 已删除：与 --font-body 值逐字符相同且零引用（死 token） */
   --font-body: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
 
@@ -33,12 +47,31 @@
   --color-gold: var(--gold);
   --color-gold-dim: var(--gold-dim);
   --color-cyan: var(--cyan);
-  --color-cyan-dim: var(--cyan-dim);
+  /* --color-cyan-dim 已删除：--cyan-dim 零引用（死 token） */
   --color-danger: var(--danger);
   --font-sans: var(--font-body);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
   --radius-lg: var(--radius);
+
+  /*
+    阴影 token（P2 收口）。
+    此前 --gold-glow / --cyan-glow 未映射进 @theme，导致 17 处阴影
+    只能用任意值语法书写，无法统一调整。
+    注意：Tailwind v4 的阴影命名空间是 --shadow-*。
+
+    只下沉出现 >=2 次的规格；单次使用的（如 0 0 32px）保留任意值语法，
+    避免过度抽象。
+
+    重要：注释中不要写出 "shadow-" 紧跟方括号的任意值类名文本。
+    Tailwind 的静态提取器会把注释里的这种片段当成真实工具类，
+    生成非法 CSS 并触发 "Unexpected token Delim('*')" 构建警告。
+  */
+  --shadow-glow-gold-sm: 0 0 8px var(--gold-glow);
+  --shadow-glow-gold: 0 0 16px var(--gold-glow);
+  --shadow-glow-gold-inset: inset 0 0 8px var(--gold-glow);
+  --shadow-glow-cyan-sm: 0 0 10px var(--cyan-glow);
+  --shadow-glow-cyan: 0 0 16px var(--cyan-glow);
 }
 
 * {

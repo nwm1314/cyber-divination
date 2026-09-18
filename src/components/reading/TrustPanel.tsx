@@ -92,7 +92,7 @@ export function TrustPanel({
             </ul>
           </div>
         ) : (
-          <p className="text-xs text-muted/70">当前无边界警告。</p>
+          <p className="text-xs text-muted/90">当前无边界警告。</p>
         )}
 
         {pro && hasEvidence ? (
@@ -115,7 +115,7 @@ export function TrustPanel({
                       : ""}
                   </div>
                   {e.condition ? (
-                    <div className="text-muted/70">适用条件：{e.condition}</div>
+                    <div className="text-muted/90">适用条件：{e.condition}</div>
                   ) : null}
                 </li>
               ))}
@@ -124,7 +124,7 @@ export function TrustPanel({
         ) : null}
 
         {pro && !hasEvidence ? (
-          <p className="text-xs text-muted/70">
+          <p className="text-xs text-muted/90">
             本盘暂无结构化 evidence（部分术数/旧缓存可能未带齐）。
           </p>
         ) : null}

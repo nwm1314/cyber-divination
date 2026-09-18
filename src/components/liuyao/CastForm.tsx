@@ -221,7 +221,7 @@ export function CastForm() {
                   "rounded-xl border px-2 py-3 text-center transition-all",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
                   active
-                    ? "border-gold/50 bg-gold/10 shadow-[0_0_16px_var(--gold-glow)]"
+                    ? "border-gold/50 bg-gold/10 shadow-glow-gold"
                     : "border-border bg-surface-elevated/50 hover:border-cyan/30",
                 ].join(" ")}
               >

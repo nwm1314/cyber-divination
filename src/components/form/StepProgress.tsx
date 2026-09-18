@@ -24,7 +24,7 @@ export function StepProgress({
         {labels?.[current] ? (
           <span className="text-cyan">{labels[current]}</span>
         ) : (
-          <span className="text-muted/60">{pct}%</span>
+          <span className="text-muted/90">{pct}%</span>
         )}
       </div>
       <div className="flex gap-1.5">

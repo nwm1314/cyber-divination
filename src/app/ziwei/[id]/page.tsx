@@ -116,7 +116,7 @@ function ZiweiChartPageInner() {
                 <strong className="text-cyan font-medium">{chart.shenZhu}</strong>
               </span>
             ) : null}
-            <span className="text-muted/70">
+            <span className="text-muted/90">
               {chart.meta.skillRef} · v{chart.meta.engineVersion}
             </span>
           </div>

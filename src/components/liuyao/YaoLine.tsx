@@ -81,7 +81,7 @@ export function YaoLine({
                 "flex-1 rounded-sm",
                 compact ? "h-1.5" : "h-2",
                 isDong
-                  ? "bg-cyan shadow-[0_0_10px_var(--cyan-glow)]"
+                  ? "bg-cyan shadow-glow-cyan-sm"
                   : "bg-foreground/85",
               ].join(" ")}
             />
@@ -90,7 +90,7 @@ export function YaoLine({
                 "flex-1 rounded-sm",
                 compact ? "h-1.5" : "h-2",
                 isDong
-                  ? "bg-cyan shadow-[0_0_10px_var(--cyan-glow)]"
+                  ? "bg-cyan shadow-glow-cyan-sm"
                   : "bg-foreground/85",
               ].join(" ")}
             />

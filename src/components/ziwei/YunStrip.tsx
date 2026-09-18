@@ -65,7 +65,7 @@ export function YunStrip({ chart }: Props) {
           )}
         </div>
       </div>
-      <p className="text-[10px] text-muted/80 leading-relaxed">
+      <p className="text-[10px] text-muted/90 leading-relaxed">
         流月/流日为运限叠盘摘要（月干/日干四化 + 支落宫），不写回本命星；仅供学习参考。
       </p>
     </div>

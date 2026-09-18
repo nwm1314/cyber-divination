@@ -111,7 +111,7 @@ export function RelationsPanel({ relations }: Props) {
           {chips(hai, "border-rose-400/30 text-rose-300")}
         </p>
       ) : null}
-      <p className="text-[10px] text-muted/70">
+      <p className="text-[10px] text-muted/90">
         合化须得令、得地且天干相邻；不满足则为合绊（力量牵制）。条件表驱动，仅供参考。
       </p>
     </div>

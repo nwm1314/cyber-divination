@@ -53,7 +53,7 @@ export function PalaceCell({ palace, isMing, className = "" }: Props) {
           <StarBadge key={s.name} star={s} />
         ))}
         {palace.stars.length === 0 ? (
-          <span className="text-[9px] text-muted/50">—</span>
+          <span className="text-[9px] text-muted/90">—</span>
         ) : null}
       </div>
     </div>

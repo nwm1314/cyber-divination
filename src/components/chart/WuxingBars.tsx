@@ -69,8 +69,15 @@ export function WuxingBars({ scores, dayMaster, viewMode, chart }: Props) {
                 aria-label={`${w.label}力量`}
               >
                 <div
+                  /*
+                    原写法缺少颜色值，是无效 CSS，会导致构建期
+                    "Unexpected token Delim('*')" 警告。改用 currentColor，
+                    使光晕跟随该五行自身的配色。
+                    注意：注释中不要写出完整的任意值类名文本，
+                    Tailwind 的提取器会把注释里的类名当成真实工具类。
+                  */
                   className={`h-full rounded-full transition-all duration-500 ${w.bar} ${
-                    isDominant ? "shadow-[0_0_8px]" : ""
+                    isDominant ? "shadow-[0_0_8px_currentColor]" : ""
                   }`}
                   style={{ width: `${pct}%` }}
                 />
