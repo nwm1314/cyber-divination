@@ -31,6 +31,7 @@ export type LlmChatErrorCode =
   | "LLM_HTTP_ERROR"
   | "LLM_EMPTY"
   | "LLM_NETWORK"
+  | "LLM_TIMEOUT"
   | "LLM_UNKNOWN";
 
 function parseTokenCount(v: unknown): number | null {
@@ -54,8 +55,21 @@ export function getLlmModel(): string {
   return process.env.LLM_MODEL?.trim() || "gpt-4o-mini";
 }
 
+/** 单次 LLM 请求超时（毫秒）。默认 60s，可用 LLM_TIMEOUT_MS 覆盖。 */
+export function getLlmTimeoutMs(): number {
+  const raw = process.env.LLM_TIMEOUT_MS?.trim();
+  if (!raw) return 60_000;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 60_000;
+  return Math.floor(n);
+}
+
 /**
  * 调用 Chat Completions；失败抛错（消息为 LLM_* 短码，不含密钥/正文）。
+ *
+ * 超时保护：原实现直接 `await fetch(...)`，无 signal/超时，上游挂起时
+ * 该请求会永久占用连接与函数实例（全库无任何 AbortSignal 使用）。
+ * 现统一使用 `AbortSignal.timeout(getLlmTimeoutMs())`。
  */
 export async function chatCompletion(
   messages: { role: "system" | "user" | "assistant"; content: string }[],
@@ -66,6 +80,7 @@ export async function chatCompletion(
   const model = getLlmModel();
   const started = Date.now();
   const requestId = ctx.requestId ?? "llm-local";
+  const timeoutMs = getLlmTimeoutMs();
 
   if (!apiKey) {
     logApi("warn", "llm.chat.skip", {
@@ -96,6 +111,7 @@ export async function chatCompletion(
         max_tokens: 4096,
         temperature: 0.7,
       }),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     const durationMs = Date.now() - started;
@@ -164,6 +180,11 @@ export async function chatCompletion(
       throw err;
     }
     const durationMs = Date.now() - started;
+    // AbortSignal.timeout() 触发时抛 TimeoutError（DOMException，name === "TimeoutError"）
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError");
+    const errorCode = isTimeout ? "LLM_TIMEOUT" : "LLM_NETWORK";
     logApi("error", "llm.chat.error", {
       requestId,
       route: "llm.chat",
@@ -171,13 +192,14 @@ export async function chatCompletion(
       model,
       durationMs,
       fallback: true,
-      errorCode: "LLM_NETWORK",
+      errorCode,
+      timeoutMs: isTimeout ? timeoutMs : undefined,
       message: err instanceof Error ? err.message : "unknown",
       promptTokens: null,
       completionTokens: null,
       totalTokens: null,
     });
-    throw new Error("LLM_NETWORK");
+    throw new Error(errorCode);
   }
 }
 
@@ -188,6 +210,7 @@ export function llmErrorCode(err: unknown): string {
   if (msg.startsWith("LLM_HTTP_")) return msg;
   if (msg === "LLM_EMPTY") return "LLM_EMPTY";
   if (msg === "LLM_NETWORK") return "LLM_NETWORK";
+  if (msg === "LLM_TIMEOUT") return "LLM_TIMEOUT";
   return "LLM_UNKNOWN";
 }
 

@@ -9,7 +9,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { UserId } from "@/lib/types/user";
 import type { LiuyaoChart } from "@/lib/types/liuyao";
-import { ensureSchema, getSql, isDatabaseConfigured } from "@/lib/db";
+import { ensureSchema, getSql } from "@/lib/db";
 import { getCloudStoreDriver } from "./driver";
 import type {
   CloudLiuyaoListItem,
@@ -53,8 +53,19 @@ async function persistFile(): Promise<void> {
   await fs.writeFile(dataFile(), JSON.stringify(memory, null, 2), "utf-8");
 }
 
+/**
+ * 与 cloud-store / cloud-ziwei-store / cloud-person-store 保持一致。
+ *
+ * 此前这里多一个 `&& isDatabaseConfigured()`，与另三个 store 判定不一致，
+ * 会导致同一部署下三术数数据可能分别落到 Postgres 与 JSON 文件，
+ * 使导出/删号/迁移读到混合状态。
+ *
+ * 冗余性说明：`getCloudStoreDriver()`（driver.ts:11-24）在
+ * `CLOUD_STORE_DRIVER=postgres` 且无 DATABASE_URL 时已 fail-fast 抛错，
+ * 因此驱动层已保证 postgres ⇒ 数据库可用，此处无需二次判断。
+ */
 function isPostgresDriver(): boolean {
-  return getCloudStoreDriver() === "postgres" && isDatabaseConfigured();
+  return getCloudStoreDriver() === "postgres";
 }
 
 function rowToRecord(row: {
