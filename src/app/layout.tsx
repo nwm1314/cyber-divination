@@ -37,8 +37,13 @@ export default function RootLayout({
       className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col text-foreground bg-background">
+        <a href="#main" className="skip-link">
+          跳到主要内容
+        </a>
         <HeaderSlot />
-        {children}
+        <main id="main" className="flex flex-1 flex-col">
+          {children}
+        </main>
       </body>
     </html>
   );

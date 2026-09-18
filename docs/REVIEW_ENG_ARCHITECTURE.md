@@ -5,6 +5,14 @@
 > 范围：`src/app/**`、`src/lib/**`、`src/components/**`
 > 方法：先读 `node_modules/next/dist/docs/` 现行指南，再评审代码（见 §4）
 > 说明：所有结论均标注 `文件:行号`。凡未能直接验证者，明确写「不确定」。
+>
+> **⚠️ 并行改动提示**：本审查进行期间，有**其他任务在并行修改同一工作区**。
+> 已确认的变动：`src/lib/api/validate.ts`、`src/lib/contracts/charts.ts`、
+> `src/lib/api/validate.test.ts`（P0-2 乱码已被修复，见 §3 P0-2）、
+> `src/lib/config/validate-prod.ts`。
+> 因此**部分行号可能漂移**；本报告所有行号均已在**收尾时逐条复核**，
+> 涉及 P0-3 的引用已更新为当前实际行号。
+> **我本人未修改任何源文件**，唯一写入的文件是本报告。
 
 ---
 
@@ -37,7 +45,7 @@
    `HexagramVisual`、`YaoLine`、`YunStrip`
 3. **错误边界 `error.tsx`（1 个）**——`src/app/error.tsx:1`，必需（React 错误边界必须是客户端组件）。
 
-**符合度评估**：组件级边界**基本合理**——`Field`/`Button`/`Card` 之外的可交互单元都标了 `"use client"`，纯展示组件（`BaziTable`、`WuxingBars`、`PalaceGrid`、`ShareCard`、`DisclaimerFooter` 等）保持服务端。**问题在页面级**：14 个页面整体标为客户端，其中 `/charts`（`src/app/charts/page.tsx:1`，434 行）、`/people/[id]`（`src/app/people/[id]/page.tsx:1`，406 行）等页面把「取数 + 渲染」全部放进客户端，服务端完全没有参与数据准备。
+**符合度评估**：组件级边界**基本合理**——`Field`/`Button`/`Card` 之外的可交互单元都标了 `"use client"`，纯展示组件（`BaziTable`、`WuxingBars`、`PalaceGrid`、`ShareCard`、`DisclaimerFooter` 等）保持服务端。**问题在页面级**：14 个页面整体标为客户端，其中 `/charts`（`src/app/charts/page.tsx:1`，443 行）、`/people/[id]`（`src/app/people/[id]/page.tsx:1`，415 行）等页面把「取数 + 渲染」全部放进客户端，服务端完全没有参与数据准备。
 
 ### 1.2 根布局读取会话 —— 全站动态渲染的根源
 
@@ -208,17 +216,17 @@ src/lib/storage/migrate.ts:271-315  runMigrateFromLocal()
 | # | 问题 | 影响 | 严重度 | 证据（文件:行号） | 成本 |
 |---|---|---|---|---|---|
 | **P0-1** | 根布局 `await getServerSession()` 使全站动态渲染 | 24/24 页面失去静态预渲染；首页、隐私页等纯静态页也无法 CDN 缓存；公开分享页被迫先读会话 | **P0** | `src/app/layout.tsx:26`；`src/lib/auth/get-session.ts:15`；`.next/prerender-manifest.json`（仅 2 条，无业务页） | M |
-| **P0-2** | `validate.ts` 与 `contracts/charts.ts` 存在 **5 处** mojibake（GBK 被当 UTF-8 解码），乱码直接返回给 API 调用方 | 用户可见的错误提示为乱码；「legacy 盘无权威输入」等关键引导语不可读 | **P0** | `src/lib/api/validate.ts:54,68,69,80`；`src/lib/contracts/charts.ts:152` | **S** |
-| **P0-3** | 云端 4 个 store 各自 `isPostgresDriver()` 判定**不一致**：liuyao 多一个 `&& isDatabaseConfigured()` | 同一部署下，三术数据可能分别落到 Postgres 与 JSON 文件，导出/删号/迁移语义分裂（详见 §3） | **P0** | `src/lib/storage/cloud-liuyao-store.ts:54-56` vs `cloud-store.ts:28-30`、`cloud-ziwei-store.ts:26-28`、`cloud-person-store.ts:18-20` | S |
+| **P0-2** | ~~`validate.ts` 与 `contracts/charts.ts` 存在 **5 处** mojibake（GBK 被当 UTF-8 解码），乱码直接返回给 API 调用方~~ **【审查期间已被并行修复，复核通过】** | 原缺陷：用户可见的错误提示为乱码。**当前状态：5 处字符串均已修正为正常中文，测试断言同步更新** | ~~P0~~ **已闭环** | 修复后：`src/lib/api/validate.ts:54,68,69,80`；`src/lib/contracts/charts.ts:152`；`src/lib/api/validate.test.ts:67` | — |
+| **P0-3** | 云端 4 个 store 各自 `isPostgresDriver()` 判定**不一致**：liuyao 多一个 `&& isDatabaseConfigured()` | 同一部署下，三术数据可能分别落到 Postgres 与 JSON 文件，导出/删号/迁移语义分裂（详见 §3） | **P0** | `src/lib/storage/cloud-liuyao-store.ts:57` vs `cloud-store.ts:31`、`cloud-ziwei-store.ts:28`、`cloud-person-store.ts:20`（**行号已随并行改动漂移，见 §3 P0-3**） | S |
 | **P0-4** | 迁移/合并为「读-改-写」且无事务/无并发保护 | 多设备并发迁移时可能丢更新；`updatedAt` 相同即「云端胜」策略在时钟偏差下可能覆盖较新本地数据 | **P0** | `src/app/api/charts/migrate/route.ts:72`（读）→`:127-174`（改）→`upsertCloudChart`（写）；`src/lib/storage/migrate.ts:216-225,137-148` | M |
-| **P1-1** | 三术解读管线是三份近似复制的实现（**~177/~249 归一化行重合，约 71%**） | 改一处需同步改三处；新增术数须再抄一遍；`sections.ts` 三份几乎同构 | **P1** | `src/lib/reading/llm/llm.ts`（306 行）、`src/lib/reading/ziwei/llm.ts`（255 行）、`src/lib/reading/liuyao/llm.ts`（245 行）；共享函数 `sanitizeFallbackReason`/`withTrust` 三处各写一遍 | L |
+| **P1-1** | 三术解读管线是三份近似复制的实现（**~177/~249 归一化行重合，约 71%**） | 改一处需同步改三处；新增术数须再抄一遍；`sections.ts` 三份几乎同构 | **P1** | `src/lib/reading/llm/llm.ts`（306 行）、`src/lib/reading/ziwei/llm.ts`（255 行）、`src/lib/reading/liuyao/llm.ts`（243 行）；共享函数 `sanitizeFallbackReason`/`withTrust` 三处各写一遍 | L |
 | **P1-2** | 云端存储「文件 + Postgres」两套并行实现，**27 处运行时分支** | 任一侧改动都要双侧同步；liuyao 已出现分支判定漂移（P0-3）；无独立 `pg-liuyao-store.ts`，SQL 内联 | **P1** | `cloud-store.ts`(7 分支)、`cloud-ziwei-store.ts`(7)、`cloud-person-store.ts`(6)、`cloud-liuyao-store.ts`(7) | L |
 | **P1-3** | `components`/`app` 对 `lib` 深层内部模块的直接导入共 **100 处** | 破坏封装：内部重命名/移动会波及调用方；`lib/<domain>/index.ts` 的公共契约形同虚设 | **P1** | 见 §3 P1-3 明细表（`auth` 35、`storage` 21、`types` 18、`reading` 12、`bazi` 7…） | L |
 | **P1-4** | 三个新建向导在客户端静态引入完整计算引擎 | 首屏 JS 偏大，三术引擎合计约 **8984 行源码**（bazi 2601 / ziwei 3035 / liuyao 3348）被纳入客户端图 | **P1** | `src/components/form/BirthWizard.tsx:6`（`@/lib/bazi`）、`ZiweiWizard.tsx:7`（`@/lib/ziwei`）、`CastForm.tsx:10-11`（`@/lib/liuyao/cast` + `analyze/yongshen`） | M |
 | **P1-5** | `types/` 与 `contracts/` 职责重叠：章节 key 契约被**三处独立定义** | 同一契约三个真相源，改名时极易漏改，且三处已使用不同措辞的注释声称「稳定契约」 | **P1** | `src/lib/types/index.ts:314-322,357-365,391-398`（union）；`src/lib/contracts/reading.ts:4-34`（zod enum）；`src/lib/reading/sections.ts`、`ziwei/sections.ts`、`liuyao/sections.ts`（`as const` 数组） | M |
 | **P1-6** | 24 个**真正空** catch 块（`catch {}` 无任何语句） | 静默吞异常，故障不可观测；部分位于存储/认证关键路径 | **P1** | 见 §3 P1-6 完整清单（24 处，已用花括号配平算法提取而非正则猜测） | M |
 | **P1-7** | `catch` 块普遍只 `return null`/赋默认值，无日志 | 133 个 catch 中 70 个体量 ≤80 字符，多以「返回 null」收场，失败无痕迹 | **P1** | 全仓 133 个 catch；典型：`src/lib/storage/mode.ts:16,27,38`、`src/lib/storage/kv.ts:12,22,32,42,50` | M |
-| **P2-1** | 24 个页面中 14 个整页 `"use client"` | 服务端不参与取数，HTML 首屏依赖 JS；`/charts`(434 行)、`/people/[id]`(406 行) 尤重 | **P2** | `src/app/charts/page.tsx:1`、`src/app/people/[id]/page.tsx:1` 等 14 处 | L |
+| **P2-1** | 24 个页面中 14 个整页 `"use client"` | 服务端不参与取数，HTML 首屏依赖 JS；`/charts`(443 行)、`/people/[id]`(415 行) 尤重 | **P2** | `src/app/charts/page.tsx:1`、`src/app/people/[id]/page.tsx:1` 等 14 处 | L |
 | **P2-2** | 未使用 `next/image`，`next.config.ts` 无 `images` 配置 | 目前项目**确实没有位图资源**（`next/image` 零引用），故**当前无实际损失**；属「未来若加图需补配置」的提醒 | **P2** | `next.config.ts`（无 `images` 键）；全仓 `next/image` 0 命中 | S |
 | **P2-3** | 83 处非空断言 `!`，其中 34 处集中在 4 个云端 store 的 `memory!.users[...]` | 依赖「`await ensureLoaded()` 后 memory 必非空」的隐式约定，重构时易炸 | **P2** | `cloud-store.ts`(9)、`cloud-ziwei-store.ts`(9)、`cloud-liuyao-store.ts`(8)、`cloud-person-store.ts`(8) 等 | S |
 | **P2-4** | `as unknown as` 8 处（含 5 处在测试中 mock fetch） | 生产代码 3 处需关注 | **P2** | `src/lib/storage/mode.ts:138,139`（mock Storage 探测）；`src/components/auth/LoginForm.tsx:180`；测试 5 处 | S |
@@ -294,43 +302,44 @@ src/lib/storage/migrate.ts:271-315  runMigrateFromLocal()
 
 ---
 
-### P0-2 修复 mojibake 乱码
+### P0-2 修复 mojibake 乱码 —— 【审查期间已由并行任务修复，复核通过 ✅】
 
-**为什么**：这 5 个字符串是**面向用户的错误信息**，乱码会直接展示在 UI 上。
-`src/lib/api/validate.ts:68` 的整句（「legacy 盘无服务端权威用户输入，请合并新版档案或使用模板解读」）
-是 legacy 用户的**唯一引导语**，乱码等于该引导失效。
+**原缺陷**：这 5 个字符串是**面向用户的错误信息**，被 GBK→UTF-8 误解码后乱码直接展示在 UI 上。
+其中 `validate.ts:68` 的整句是 legacy 用户的**唯一引导语**，乱码等于该引导完全失效。
 
-**改哪个文件 / 怎么改**：逐字替换为正确中文（内容可依据上下文与
-`src/lib/api/validate.test.ts:67` 的断言 `/legacy|妯℃澘/` 推断原意）。
+**修复前 vs 修复后（我于审查期间实测复核）**：
 
-| 文件:行 | 当前（乱码） | 应改为 |
+| 文件:行 | 修复前（乱码） | 修复后（当前实际内容） |
 |---|---|---|
-| `src/lib/api/validate.ts:54` | `"Bazi璇锋眰浣撴棤鏁?"` | `"Bazi 请求体无效"` |
-| `src/lib/api/validate.ts:68` | `"legacy 鐩樻棤鏈嶅姟绔潈濞佺敤鎴疯緭鍏ワ紝璇峰悎骞舵柊鐗堟。妗ｆ垨浣跨敤妯℃澘瑙ｈ"` | `"legacy 盘无服务端权威用户输入，请合并新版档案或使用模板解读"` |
-| `src/lib/api/validate.ts:69` | `"Bazi 鐢熷嚭淇℃伅鏃犳晥"` | `"Bazi 出生信息无效"` |
-| `src/lib/api/validate.ts:80` | `"Bazi 鍛界洏璁＄畻澶辫触"` | `"Bazi 命盘计算失败"` |
-| `src/lib/contracts/charts.ts:152` | `"缂哄皯 Bazi 鐢熷嚭淇℃伅鎴栨湁鏁堢洏"` | `"缺少 Bazi 出生信息或有效盘"` |
+| `src/lib/api/validate.ts:54` | `"Bazi璇锋眰浣撴棤鏁?"` | `"Bazi 请求体无效"` ✅ |
+| `src/lib/api/validate.ts:68` | `"legacy 鐩樻棤鏈嶅姟绔潈濞佺敤鎴疯緭鍏…"` | `"legacy 盘缺少服务端权威输入，请合并新版档案或改用模板解读"` ✅ |
+| `src/lib/api/validate.ts:69` | `"Bazi 鐢熷嚭淇℃伅鏃犳晥"` | `"Bazi 出生信息无效"` ✅ |
+| `src/lib/api/validate.ts:80` | `"Bazi 鍛界洏璁＄畻澶辫触"` | `"Bazi 命盘计算失败"` ✅ |
+| `src/lib/contracts/charts.ts:152` | `"缂哄皯 Bazi 鐢熷嚭淇℃伅鎴栨湁鏁堢洏"` | `"缺少 Bazi 出生信息或有效命盘"` ✅ |
+| `src/lib/api/validate.test.ts:67` | `toMatch(/legacy\|妯℃澘/)` | `toMatch(/legacy\|模板/)` ✅ |
 
-**连带修复**：`src/lib/api/validate.test.ts:67` 的断言含乱码
-`expect(result.message).toMatch(/legacy|妯℃澘/)`，应同步改为 `/legacy|模板/`，
-否则修好源码后该断言会因匹配乱码而失败。
+**复核方法**：用「GBK 重编码 → UTF-8 解码」往返算法重新扫描上述文件，**mojibake 命中数 = 0**。
+所有 5 处字符串与 1 处测试断言均已修正，**本条已闭环，无需再动**。
 
-**为什么只改这 5 处**：我用「GBK 重编码 → UTF-8 解码」往返算法扫描了
-`src/**` 全部非测试文件，**仅这 2 个文件命中**。`src/lib/reading/sections.ts`
-等文件的中文**是正常的**（我已用 UTF-8 显式读取原始字节确认）——
-早先在终端看到的乱码是 PowerShell 控制台代码页的显示问题，**不是文件缺陷**，请勿据此大范围「修复」。
+**方法论提醒（对全仓仍然有效）**：我用同一算法扫描 `src/**` 全部非测试文件（当时基线），
+**仅这 2 个文件命中**。`src/lib/reading/sections.ts` 等文件的中文**一直是正常的**——
+早先在终端看到的乱码是 PowerShell 控制台代码页的显示问题，**不是文件缺陷**。
+**请勿据此在其它文件做「乱码修复」**，那会破坏正确的中文。
 
 ---
 
 ### P0-3 统一云端驱动的判定
 
+> ⚠️ **行号说明**：本节编写期间有并行任务改动了 `cloud-store.ts` 等文件，
+> 局部判定函数的行号已整体**下移约 2 行**。下表为**复核后的当前行号**。
+
 **为什么**：四个 store 对「是否用 Postgres」给出了**不同**答案：
 
 ```
-cloud-store.ts:29          getCloudStoreDriver() === "postgres"
-cloud-ziwei-store.ts:27    getCloudStoreDriver() === "postgres"
-cloud-person-store.ts:19   getCloudStoreDriver() === "postgres"
-cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseConfigured()   ← 多一个条件
+cloud-store.ts:31          getCloudStoreDriver() === "postgres"
+cloud-ziwei-store.ts:28    getCloudStoreDriver() === "postgres"
+cloud-person-store.ts:20   getCloudStoreDriver() === "postgres"
+cloud-liuyao-store.ts:57   getCloudStoreDriver() === "postgres" && isDatabaseConfigured()   ← 多一个条件
 ```
 
 `driver.ts:11-24` 中，`CLOUD_STORE_DRIVER=postgres` 且无 `DATABASE_URL` 时**会抛错**
@@ -355,8 +364,8 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
    让判定结果成为**唯一真相**（该保护已经保证了 postgres ⟹ DATABASE_URL 存在，
    因此 `&& isDatabaseConfigured()` 是冗余且**引入分歧**的）。
 
-2. 删除四个 store 各自的局部 `isPostgresDriver`（`cloud-store.ts:28-30`、
-   `cloud-ziwei-store.ts:26-28`、`cloud-person-store.ts:18-20`、`cloud-liuyao-store.ts:54-56`），
+2. 删除四个 store 各自的局部 `isPostgresDriver`（`cloud-store.ts:30-32`、
+   `cloud-ziwei-store.ts:27-29`、`cloud-person-store.ts:19-21`、`cloud-liuyao-store.ts:56-58`），
    改为统一 `import { isCloudPostgres } from "./driver"`。
 
 3. 顺带删除 `cloud-liuyao-store.ts:10` 中因此不再需要的 `isDatabaseConfigured` 导入。
@@ -418,14 +427,18 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
 
 ### P1-1 三术解读管线去重
 
-**量化证据（实测，非估算）**：我对三个 LLM 入口做「去注释 + 字符串归一化」后按行比对：
+**量化证据（实测，非估算）**：我对三个 LLM 入口做「去注释 + 字符串归一化 + 折叠字符串字面量」后按行比对：
 
 | 对比 | 归一化行数 | 三文件共有行 |
 |---|---|---|
-| `reading/llm/llm.ts`（八字） | 280 | — |
-| `reading/ziwei/llm.ts` | 239 | — |
-| `reading/liuyao/llm.ts` | 228 | — |
-| **三文件共有** | **177** | **约占最小文件 228 行的 78%，约占三文件合计 747 行的 24%** |
+| `reading/llm/llm.ts`（八字，原文件 306 行） | 280 | — |
+| `reading/ziwei/llm.ts`（原文件 255 行） | 239 | — |
+| `reading/liuyao/llm.ts`（原文件 243 行） | 228 | — |
+| **三文件共有** | **177** | **约占最小文件 228 归一化行的 78%，约占三文件合计 747 归一化行的 24%** |
+
+> **口径提醒**：上表是**归一化后**的行数（去注释、去空行、字符串折叠为 `"S"`），
+> **不等于**文件真实行数（306/255/243）。两者不可混用：
+> 「177 行重合」表示**结构同构的规模**，而非「可直接删除 177 行」。
 
 `ziwei ∩ liuyao` 单独重合 **189 行**（紫微与六爻的 LLM 管线几乎逐行同构）。
 
@@ -437,10 +450,10 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
 | `withTrust(report, chart)` | `llm.ts:169-172` | `ziwei/llm.ts:110-115` | `liuyao/llm.ts:100-106` |
 | `buildSectionsFromParsed` | `llm.ts:149-161` | 内联于 `ziwei/llm.ts:191-199` | 内联于 `liuyao/llm.ts` |
 | 未配置 → 模板回落 | `llm.ts:187-220` | `ziwei/llm.ts:131-164` | `liuyao/llm.ts:~107-140` |
-| try → parse → 失败回落 | `llm.ts:222-306` | `ziwei/llm.ts:166-255` | `liuyao/llm.ts:~140-235` |
+| try → parse → 失败回落 | `llm.ts:222-306` | `ziwei/llm.ts:166-255` | `liuyao/llm.ts:~140-243` |
 | `meta`（model/usage/durationMs/errorCode/parseSource） | `llm.ts:118-124` | `ziwei/llm.ts:90-98` | 同构 |
 
-模板侧同样重复：`ziwei/template.ts`（453 行）∩ `liuyao/template.ts`（419 行）
+模板侧同样重复：`ziwei/template.ts`（456 行）∩ `liuyao/template.ts`（423 行）
 **共有 160 行**；两者前 45 行中 `:1`、`:10`、`:11` 等导入区逐字相同。
 `sections.ts` 三份（`reading/sections.ts` 27 行、`ziwei/sections.ts` 28 行、`liuyao/sections.ts` 26 行）
 除了 key 列表与标题表外，`DISCLAIMER` 的复用方式也完全一致
@@ -461,7 +474,7 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
 
 3. **模板侧**：先把 `ziwei/template.ts` 与 `liuyao/template.ts` 的
    「章节装配 + 输出组装」抽为 `assembleTemplateReport(sections, disclaimer, options)`，
-   两者的 160 行重合绝大部分在此。八字 `template/render.ts`（107 行）本就很薄，
+   两者的 160 行重合绝大部分在此。八字 `template/render.ts`（110 行）本就很薄，
    可作为该抽象的参照实现。
 
 **预期收益**：LLM 三入口从 306+255+245 = **806 行**降至约 90 行适配器 + 约 200 行共享管线，
@@ -479,13 +492,13 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
 
 | 文件 | 行数 | 驱动分支数 | `memory!` 次数 |
 |---|---|---|---|
-| `cloud-store.ts` | 239 | 7 | 9 |
-| `cloud-ziwei-store.ts` | 154 | 7 | 9 |
-| `cloud-person-store.ts` | 154 | 6 | 8 |
-| `cloud-liuyao-store.ts` | 225 | 7 | 8 |
-| `pg-bazi-store.ts` | 167 | — | — |
-| `pg-ziwei-store.ts` | 136 | — | — |
-| `pg-person-store.ts` | 115 | — | — |
+| `cloud-store.ts` | 242 | 7 | 9 |
+| `cloud-ziwei-store.ts` | 155 | 7 | 9 |
+| `cloud-person-store.ts` | 155 | 6 | 8 |
+| `cloud-liuyao-store.ts` | 227 | 7 | 8 |
+| `pg-bazi-store.ts` | 168 | — | — |
+| `pg-ziwei-store.ts` | 137 | — | — |
+| `pg-person-store.ts` | 116 | — | — |
 | **`pg-liuyao-store.ts`** | **不存在** | — | — |
 
 **关键结构缺陷**：liuyao **没有**独立的 `pg-liuyao-store.ts`，SQL 直接内联在
@@ -604,15 +617,17 @@ cloud-liuyao-store.ts:55   getCloudStoreDriver() === "postgres" && isDatabaseCon
 
 1. **`@/lib/liuyao/analyze/yongshen` 的 `CATEGORY_LABEL`（最优先，收益最直接）**
    `CastForm.tsx:11` 只为拿一个**标签映射表**，就把整个 `analyze/` 目录拖进客户端。
-   `analyze/` 下有 14 个非测试文件（`dongbian/fushen/kongwang/liuqin/liushen/palaces/scope/shi-ying/yingqi/yongshen/yongshen-status/yuepo` 等）。
+   `analyze/` 下有 **13 个**非测试文件（`dongbian.ts`、`fushen.ts`、`index.ts`、`kongwang.ts`、
+   `liuqin.ts`、`liushen.ts`、`palaces.ts`、`scope.ts`、`shi-ying.ts`、`yingqi.ts`、
+   `yongshen-status.ts`、`yongshen.ts`、`yuepo.ts`）。
    **改法**：把 `CATEGORY_LABEL`（纯常量）移到不依赖引擎的
    `src/lib/liuyao/labels.ts`（新建），`CastForm` 改从该文件导入，
    `analyze/yongshen.ts` 反过来从 `labels.ts` 再导出以保持兼容。
    这是**单文件、零风险**的改动，却能把 `analyze/` 整目录移出 `CastForm` 的客户端图。
 
 2. **`CastForm` 的 `castLiuyao` 改为按需动态导入**
-   `src/lib/liuyao/cast/` 目录 8 个文件（build 88 / coins 27 / index 149 / method 42 /
-   resolve-gua 48 / rng 26 / time 94 / yao 47 行，合计约 521 行），
+   `src/lib/liuyao/cast/` 目录 **8 个**文件（build 96 / coins 31 / index 162 / method 52 /
+   resolve-gua 58 / rng 29 / time 113 / yao 54 行，合计 **595 行**），
    其中 `data/hexagrams.ts`（卦表）体积更大。
    **改法**：`CastForm.tsx:120` 起卦是**用户点击后**才发生的事件（`:120` 在提交处理函数内），
    把顶部静态 import 改为函数内 `const { castLiuyao } = await import("@/lib/liuyao/cast")`。
@@ -903,7 +918,7 @@ zod 从自己的最小 schema 扩展，而**不是**从 `types` 派生。
 
 | 批次 | 内容 | 理由 |
 |---|---|---|
-| **第 1 批（立即，S 成本）** | P0-2 乱码（5 处 + 1 处测试断言）、P0-3 驱动判定统一 | 单文件级改动，立即消除用户可见缺陷与数据分裂风险 |
+| **第 1 批（立即，S 成本）** | ~~P0-2 乱码~~（已由并行任务闭环 ✅）、**P0-3 驱动判定统一**（唯一待办） | P0-3 为单文件级改动，消除三术数据分裂风险 |
 | **第 2 批（本周）** | P0-1 根布局解耦（拆 Session 岛 + `<Suspense>`） | 影响全部 24 页，是后续一切静态优化与 PPR 的前提 |
 | **第 3 批（本迭代）** | P1-4 第 1 项（`CATEGORY_LABEL` 外移）、P1-6 认证/存储 8 处空 catch、P1-5 key 单源化 | 均为低成本、边界清晰的改动 |
 | **第 4 批（规划）** | P0-4 迁移乐观锁、P1-1 解读管线去重、P1-2 存储收敛、P1-3 深层导入 | 结构性重构，需测试护航，逐项独立提交 |

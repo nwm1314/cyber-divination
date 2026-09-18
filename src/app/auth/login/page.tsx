@@ -70,6 +70,8 @@ export default function LoginPage({ searchParams }: Props) {
           <span className="w-10" aria-hidden />
         </header>
 
+        <h1 className="sr-only">登录赛博命理</h1>
+
         <Suspense fallback={<LoginGateFallback />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>

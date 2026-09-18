@@ -71,3 +71,18 @@ export const HOME = {
   archives: "我的档案",
   settings: "设置",
 } as const;
+
+/**
+ * 档案/历史页统一术语（P1 修复）。
+ *
+ * 此前三个术数的同类页面标题互不相同：
+ * 「我的档案」/「紫微命盘」/「问卦历史」。
+ * 现统一为「…档案」句式，仅保留术数名差异，便于用户建立一致心智。
+ */
+export const ARCHIVES = {
+  baziTitle: "八字档案",
+  ziweiTitle: "紫微档案",
+  liuyaoTitle: "六爻档案",
+  /** 通用返回无障碍标签 */
+  backToArchives: "返回档案",
+} as const;

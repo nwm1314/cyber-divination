@@ -193,9 +193,9 @@ grep 全项目**三个术数列表页的互链**：
 
 | ID | 问题 | 影响用户 | 严重度 | 证据 `文件:行号` |
 |---|---|---|---|---|
-| **IA-1** | **六爻解读页 `/liuyao/[id]/reading` 无任何入口**（功能存在但不可达） | 所有六爻用户 | **P1** | grep `liuyao/${...}/reading` → 0 匹配；对比 `charts/page.tsx:334`、`ziwei/page.tsx:173` |
+| **IA-1** | **六爻解读页 `/liuyao/[id]/reading` 无入口**（列表页缺"解读"按钮） | 六爻用户 | **P1** | `src/app/liuyao/page.tsx:150-154` 仅有"看卦"；对比 `charts/page.tsx:334`、`ziwei/page.tsx:173`。**注**：结果页 `/liuyao/[id]/page.tsx:98` 有入口，但列表页缺 |
 | **IA-2** | **SiteHeader 无术数导航**，三术数不等权可达 | 所有用户 | **P1** | `SiteHeader.tsx:11-17` |
-| **IA-3** | **解读入口只在档案列表页**，不在结果页；首页→新建路径的用户找不到解读 | 新用户 | **P1** | `charts/page.tsx:334`；`chart/[id]/page.tsx` 无 `/reading` href |
+| **IA-3** | **解读入口在档案列表页与结果页都有**，但首页→新建路径的落点是 `/chart/[id]`，其入口在页面底部 `ml-auto` 处，视觉优先级低 | 新用户 | **P2** | `chart/[id]/page.tsx:169,345`、`ziwei/[id]/page.tsx:140`、`liuyao/[id]/page.tsx:98`（**均为底部按钮**，不在首屏） |
 | **IA-4** | **`/liuyao` 是导航死胡同**（无 `/charts`、无 `/ziwei` 互链） | 六爻用户 | **P1** | `liuyao/page.tsx` grep 无 `/charts`、无 `/ziwei` |
 | **IA-5** | 解读页无术数切换入口（死胡同） | 所有用户 | **P1** | `chart/[id]/reading/page.tsx:287` 仅 `/calibrate` |
 | **IA-6** | 紫微与八字**重复输入出生信息**，不共享 `/people` 档案 | 紫微用户 | **P1** | `ZiweiWizard.tsx:109` vs `BirthWizard.tsx:149`；`ZiweiWizard` 未 import `DateTimeFields` |

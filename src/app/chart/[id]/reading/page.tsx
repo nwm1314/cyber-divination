@@ -233,6 +233,9 @@ function ReadingPageInner() {
     return (
       <div className="flex flex-1 flex-col cyber-grid min-h-dvh">
         <div className="safe-pad flex flex-1 flex-col max-w-lg mx-auto w-full items-center justify-center gap-4 text-center">
+          <h1 className="text-lg font-bold text-gold tracking-wide">
+            解读报告
+          </h1>
           <p className="text-muted">未找到命盘数据，请先完成排盘。</p>
           <Link href="/chart/new">
             <Button>新建命盘</Button>
@@ -244,8 +247,23 @@ function ReadingPageInner() {
 
   if (templateReport === null && !report) {
     return (
-      <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
-        <p className="text-danger">{error ?? "模板渲染失败"}</p>
+      <div className="flex flex-1 flex-col cyber-grid min-h-dvh">
+        <div className="safe-pad flex flex-1 flex-col max-w-lg mx-auto w-full items-center justify-center gap-4 text-center">
+          <h1 className="text-lg font-bold text-gold tracking-wide">
+            解读报告
+          </h1>
+          <p className="text-danger" role="alert" aria-live="assertive">
+            {error ?? "解读生成失败，请稍后重试。"}
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link href={`/chart/${chartId}`}>
+              <Button variant="secondary">返回命盘</Button>
+            </Link>
+            <Link href="/charts">
+              <Button variant="ghost">我的档案</Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -269,7 +287,11 @@ function ReadingPageInner() {
         />
 
         {loading && (
-          <div className="flex items-center justify-center py-12">
+          <div
+            className="flex items-center justify-center py-12"
+            role="status"
+            aria-live="polite"
+          >
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-cyan/50 border-t-cyan rounded-full animate-spin" />
               <span className="text-sm text-muted">正在调用 LLM 生成解读...</span>

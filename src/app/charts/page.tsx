@@ -272,7 +272,13 @@ export default function ChartsPage() {
               </Button>
             </div>
             {syncMsg && (
-              <p className="text-xs text-muted mt-3 leading-relaxed">{syncMsg}</p>
+              <p
+                className="text-xs text-muted mt-3 leading-relaxed"
+                role="status"
+                aria-live="polite"
+              >
+                {syncMsg}
+              </p>
             )}
             <p className="text-xs text-muted mt-2 leading-relaxed">
               拉取会覆盖本机同 id；智能合并按更新时间择优，且可跳过首次引导。

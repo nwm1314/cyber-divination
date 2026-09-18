@@ -13,6 +13,7 @@ import {
   deleteArchive,
 } from "@/lib/storage/sync";
 import { Button, Card } from "@/components/ui";
+import { ARCHIVES } from "@/content/zh";
 
 const emptySubscribe = () => () => {};
 
@@ -104,7 +105,7 @@ export default function ZiweiListPage() {
             ← 档案
           </Link>
           <h1 className="text-base font-medium text-gold tracking-wide">
-            紫微命盘
+            {ARCHIVES.ziweiTitle}
           </h1>
           <Link href="/ziwei/new">
             <Button size="sm">新建</Button>
@@ -134,7 +135,13 @@ export default function ZiweiListPage() {
           </Button>
         </div>
         {syncMsg && (
-          <p className="text-xs text-muted leading-relaxed">{syncMsg}</p>
+          <p
+            className="text-xs text-muted leading-relaxed"
+            role="status"
+            aria-live="polite"
+          >
+            {syncMsg}
+          </p>
         )}
 
         {!isClient ? (

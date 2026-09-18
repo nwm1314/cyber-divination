@@ -76,6 +76,43 @@ body {
   background-size: 24px 24px;
 }
 
+/**
+ * 动效降级（WCAG 2.2.2 / 2.3.3）。
+ *
+ * 此前全站 0 处 `prefers-reduced-motion` 支持，而项目有 50+ 处
+ * transition 与 animate-spin。前庭功能障碍用户在开启系统
+ * "减少动态效果"后仍会看到全部动效。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/** 跳转到主内容链接：默认视觉隐藏，聚焦时显示（WCAG 2.4.1 Bypass Blocks） */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface-elevated);
+  color: var(--gold);
+  border: 1px solid var(--gold-dim);
+  font-size: 0.875rem;
+}
+
 .neon-border {
   border: 1px solid var(--border);
   box-shadow:

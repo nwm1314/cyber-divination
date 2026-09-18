@@ -10,45 +10,43 @@
 
 ## A1. 语义结构：`<h1>` 覆盖
 
-**实测：24 个 `page.tsx` 中，11 个完全没有 `<h1>`。**
+> **⚠️ 主 reviewer 复核修正**：本报告初稿按「每个 `page.tsx` 文件内是否出现 `<h1>`」统计，得出「11/24 缺 h1」——**该统计方法有误**。三个解读页的 `<h1>` 由子组件 `ReportHeader.tsx:69` 渲染，不在 `page.tsx` 文件内。经按「页面渲染树是否含 h1」重新核对，**真正缺 `<h1>` 的只有 2 个页面**。修正后的结论如下。
 
-| 页面 | `<h1>` 数 | `<main>` 数 | 判定 |
-|---|---|---|---|
-| `src/app/page.tsx` | 1 | 1 | ✅ |
-| `src/app/account/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/auth/callback/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/auth/login/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/chart/new/page.tsx` | 1 | 1 | ✅ |
-| `src/app/chart/[id]/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/chart/[id]/calibrate/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/chart/[id]/reading/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/charts/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/liuyao/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/liuyao/new/page.tsx` | 1 | 1 | ✅ |
-| `src/app/liuyao/[id]/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/liuyao/[id]/reading/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/people/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/people/[id]/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/privacy/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/settings/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/share/liuyao/[token]/page.tsx` | **0** | 0 | ❌ **缺 h1**（公开分享页！） |
-| `src/app/share/ziwei/[token]/page.tsx` | **0** | 0 | ❌ **缺 h1**（公开分享页！） |
-| `src/app/share/[token]/page.tsx` | **0** | 0 | ❌ **缺 h1**（公开分享页！） |
-| `src/app/ziwei/page.tsx` | 1 | 0 | ⚠️ 无 main |
-| `src/app/ziwei/new/page.tsx` | 1 | 1 | ✅ |
-| `src/app/ziwei/[id]/page.tsx` | **0** | 0 | ❌ **缺 h1** |
-| `src/app/ziwei/[id]/reading/page.tsx` | **0** | 0 | ❌ **缺 h1** |
+| 页面 | h1 来源 | 判定 |
+|---|---|---|
+| `src/app/page.tsx` | 自身 `:91` | ✅ |
+| `src/app/account/page.tsx` | 自身 `:24` | ✅ |
+| **`src/app/auth/callback/page.tsx`** | **无** | ❌ **缺 h1** |
+| **`src/app/auth/login/page.tsx`** | **无** | ❌ **缺 h1** |
+| `src/app/chart/new/page.tsx` | 自身 | ✅ |
+| `src/app/chart/[id]/page.tsx` | 自身 `:152` | ✅ |
+| `src/app/chart/[id]/calibrate/page.tsx` | 自身 | ✅ |
+| `src/app/chart/[id]/reading/page.tsx` | **`ReportHeader.tsx:69`** | ✅ |
+| `src/app/charts/page.tsx` | 自身 `:184` | ✅ |
+| `src/app/liuyao/page.tsx` | 自身 `:101` | ✅ |
+| `src/app/liuyao/new/page.tsx` | 自身 | ✅ |
+| `src/app/liuyao/[id]/page.tsx` | 自身 | ✅ |
+| `src/app/liuyao/[id]/reading/page.tsx` | **`ReportHeader.tsx:69`** | ✅ |
+| `src/app/people/page.tsx` | 自身 | ✅ |
+| `src/app/people/[id]/page.tsx` | 自身 | ✅ |
+| `src/app/privacy/page.tsx` | 自身 | ✅ |
+| `src/app/settings/page.tsx` | 自身 | ✅ |
+| `src/app/share/liuyao/[token]/page.tsx` | 自身 `:35` | ✅ |
+| `src/app/share/ziwei/[token]/page.tsx` | 自身 `:59` | ✅ |
+| `src/app/share/[token]/page.tsx` | 自身 `:69` | ✅ |
+| `src/app/ziwei/page.tsx` | 自身 `:106` | ✅ |
+| `src/app/ziwei/new/page.tsx` | 自身 | ✅ |
+| `src/app/ziwei/[id]/page.tsx` | 自身 | ✅ |
+| `src/app/ziwei/[id]/reading/page.tsx` | **`ReportHeader.tsx:69`** | ✅ |
 
-**统计**：
-- 缺 `<h1>`：**11 / 24**（45.8%）
-- 有 `<main>`：**4 / 24**（16.7%）
-- 多个 `<h1>`：**0**（无重复 h1 问题）✅
+**统计（修正后）**：
+- 缺 `<h1>`：**2 / 24**（`auth/callback`、`auth/login`）
+- 多个 `<h1>`：**0**
+- 标题层级跳跃：**0**（`src/app/page.tsx:16` 的 `<h3>` 位于 `:103` 的 `<h2>` 之下，层级正确）
 
-**WCAG 条款**：**1.3.1 Info and Relationships (A)** + **2.4.6 Headings and Labels (AA)**。
+**WCAG 条款**：**1.3.1 Info and Relationships (A)** + **2.4.6 Headings and Labels (AA)** —— 仅这 2 个认证页违规。
 
-**关键发现**：**三个公开分享页全部缺 `<h1>`**。分享页是外部访问的落地页，其可访问性缺陷影响面最大（任何人点开链接都受影响），且 SEO 上也没有主标题。
-
-> **注意**：`<h3>` 在 `src/app/page.tsx:16` 出现（`ArtCard` 内），其父级是 `<h2>`（`:103` `arts-heading`）—— 层级 h1→h2→h3 **正确** ✅。首页不存在标题跳跃。
+> 三个**公开分享页均已有 `<h1>`**（`share/[token]:69`、`share/ziwei/[token]:59`、`share/liuyao/[token]:35`），初稿称其"缺 h1"亦为统计方法所致，特此更正。
 
 ## A2. Landmark
 

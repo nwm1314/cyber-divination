@@ -65,6 +65,7 @@ function CallbackInner() {
 
   return (
     <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center p-4">
+      <h1 className="sr-only">登录验证</h1>
       <Card
         title="登录验证"
         subtitle={busy ? "正在完成登录…" : error ? "登录失败" : "即将跳转"}
@@ -81,7 +82,9 @@ function CallbackInner() {
             </Link>
           </div>
         ) : (
-          <p className="text-sm text-muted">请稍候，正在写入会话…</p>
+          <p className="text-sm text-muted" role="status" aria-live="polite">
+            请稍候，正在写入会话…
+          </p>
         )}
       </Card>
     </div>

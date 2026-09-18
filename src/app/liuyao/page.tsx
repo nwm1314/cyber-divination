@@ -9,6 +9,7 @@ import {
 } from "@/lib/storage";
 import type { LiuyaoMethod } from "@/lib/types/liuyao";
 import { Button, Card } from "@/components/ui";
+import { ARCHIVES } from "@/content/zh";
 import { deleteArchive } from "@/lib/storage/sync";
 
 const emptySubscribe = () => () => {};
@@ -99,7 +100,7 @@ export default function LiuyaoHistoryPage() {
             ← 首页
           </Link>
           <h1 className="text-base font-medium text-gold tracking-wide">
-            问卦历史
+            {ARCHIVES.liuyaoTitle}
           </h1>
           <Link href="/liuyao/new">
             <Button size="sm">起卦</Button>
@@ -151,6 +152,9 @@ export default function LiuyaoHistoryPage() {
                         <Button size="sm" variant="secondary">
                           看卦
                         </Button>
+                      </Link>
+                      <Link href={`/liuyao/${item.id}/reading`}>
+                        <Button size="sm">解读</Button>
                       </Link>
                       <Button
                         size="sm"
