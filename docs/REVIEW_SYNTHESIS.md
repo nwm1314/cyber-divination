@@ -187,7 +187,7 @@
 | P1-08 | D-3 | 20/24 页无 `<main>` landmark，无 skip link | `layout.tsx:36`（原） | **P1** | S | W4 | ✅ **已修** `63f0e20` |
 | P1-09 | D-2 | 紫微十二宫 375px 下每格 85px，字号被压到 8–10px | `PalaceGrid.tsx:51,88,108,113` | **P1** | S | W5 | ✅ **已修** `169b28a` |
 | P1-10 | D-2 | 解读页桌面端行长约 82 中文字（容器 1152px） | `reading/page.tsx:260`、`SectionCard.tsx` | **P1** | S | W5 | ✅ **已修** `169b28a` |
-| P1-11 | E-1/E-4 | 向导把完整计算引擎打进客户端 bundle | `CastForm.tsx:11`；`BirthWizard.tsx:6`；`ZiweiWizard.tsx:7` | **P1** | M | W5 | ⚠️ **部分修** `efaff81`（六爻已剔除）；八字/紫微待做 |
+| P1-11 | E-1/E-4 | 向导把完整计算引擎打进客户端 bundle | `CastForm.tsx:11`；`BirthWizard.tsx:6`；`ZiweiWizard.tsx:7` | **P1** | M | W5 | ⚠️ **部分修** `efaff81` —— **V-1 复验修正了该项的定性**：`CATEGORY_LABEL` 解耦仅使**引擎符号名**从 `/liuyao/new` 入口 chunk 消失，但**用神规则表数据仍在下发**（根因：`cast/build.ts:16` 的 `import { enrichChart } from "../analyze"` 反向拉入整个 `analyze/`）。**八字/紫微向导未动** |
 | P1-12 | E-3 | 起运精确到月的信息未驱动正式大运分档（`Math.round(diffDays/3)`） | `dayun/index.ts:226`；`dayun.test.ts:20-23` 固化缺陷 | **P1** | M | W6 | ❌ **未修**（引擎规则，需领域审校） |
 | P1-13 | E-3 | 六爻动变只做五行层回头生克，进/退/空/破/冲合全缺 | `dongbian.ts:94` | **P1** | L | W6 | ❌ **未修**（引擎规则） |
 | P1-14 | P-3/E-3 | 六爻缺 `warnings`/`evidence`/`school` 字段且不渲染 `TrustPanel` | `types/liuyao.ts:105-107`；`liuyao/[id]/reading/page.tsx:23-24` | **P1** | M | W6 | ❌ **未修** |

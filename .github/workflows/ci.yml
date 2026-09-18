@@ -49,6 +49,13 @@ jobs:
           AUTH_SECRET: ci-only-auth-secret-not-for-production
           NEXT_TELEMETRY_DISABLED: '1'
 
+      # P0-04 回归门禁：断言静态预渲染路由数不低于阈值。
+      # 修复前为 2 条（全站动态）；修复后 17 条。若根布局重新引入
+      # cookies()/headers()/searchParams，或页面直接 await 未缓存数据，
+      # 该步骤会失败而非静默退化为全站 SSR。
+      - name: Verify prerender budget (static routes >= 15)
+        run: npm run check:prerender
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
