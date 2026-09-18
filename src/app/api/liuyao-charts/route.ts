@@ -7,6 +7,8 @@ import {
 } from "@/lib/storage/cloud-liuyao-store";
 import type { CloudLiuyaoUpsertBody } from "@/lib/storage/cloud-liuyao-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { logApi } from "@/lib/api/logger";
+import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { cloudLiuyaoUpsertSchema } from "@/lib/contracts";
 
 function unauthorized() {
@@ -84,7 +86,9 @@ export async function POST(request: NextRequest) {
       {
         error: {
           code: ErrorCode.INVALID_PROFILE,
-          message: err instanceof Error ? err.message : "保存失败",
+          message: toSafeErrorMessage(err, "保存失败，请稍后重试", (original) =>
+        logApi("error", "liuyao.save.error", { route: "api.liuyao.save", requestId: crypto.randomUUID(), message: original }),
+      ),
         },
       },
       { status: 400 },

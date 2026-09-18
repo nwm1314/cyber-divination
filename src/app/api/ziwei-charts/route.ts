@@ -7,6 +7,8 @@ import {
 } from "@/lib/storage/cloud-ziwei-store";
 import type { CloudZiweiUpsertBody } from "@/lib/storage/cloud-ziwei-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { logApi } from "@/lib/api/logger";
+import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { cloudZiweiUpsertSchema } from "@/lib/contracts";
 
 function unauthorized() {
@@ -85,7 +87,9 @@ export async function POST(request: NextRequest) {
     const record = await upsertCloudZiwei(session.userId, body);
     return NextResponse.json({ record });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "保存失败";
+    const message = toSafeErrorMessage(e, "保存失败，请稍后重试", (original) =>
+      logApi("error", "ziwei.save.error", { route: "api.ziwei.save", requestId: crypto.randomUUID(), message: original }),
+    );
     return NextResponse.json(
       {
         error: {

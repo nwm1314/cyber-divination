@@ -7,6 +7,8 @@ import {
 } from "@/lib/storage/cloud-store";
 import type { CloudChartUpsertBody } from "@/lib/storage/cloud-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { logApi } from "@/lib/api/logger";
+import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { cloudChartUpsertSchema } from "@/lib/contracts";
 import { computeAuthoritativeChart } from "@/lib/bazi";
 import type { BirthProfile } from "@/lib/types";
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
       {
         error: {
           code: ErrorCode.INVALID_PROFILE,
-          message: error instanceof Error ? error.message : "出生资料无法排盘",
+          message: toSafeErrorMessage(error, "出生资料无法排盘，请检查出生日期与时辰"),
         },
       },
       { status: 400 },
@@ -103,7 +105,9 @@ export async function POST(request: NextRequest) {
     const record = await upsertCloudChart(session.userId, body);
     return NextResponse.json({ record });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "保存失败";
+    const message = toSafeErrorMessage(e, "保存失败，请稍后重试", (original) =>
+      logApi("error", "charts.save.error", { route: "api.charts.save", requestId: crypto.randomUUID(), message: original }),
+    );
     return NextResponse.json(
       {
         error: {

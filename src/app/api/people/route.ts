@@ -7,6 +7,8 @@ import {
 } from "@/lib/storage/cloud-person-store";
 import type { PersonInput } from "@/lib/types/user";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { logApi } from "@/lib/api/logger";
+import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { personInputSchema } from "@/lib/contracts";
 
 function unauthorized() {
@@ -77,7 +79,16 @@ export async function POST(request: NextRequest) {
     const person = await upsertCloudPerson(session.userId, body);
     return NextResponse.json({ person });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "保存失败";
+    const message = toSafeErrorMessage(
+      e,
+      "保存失败，请检查填写内容后重试",
+      (original) =>
+        logApi("error", "people.create.error", {
+          requestId: crypto.randomUUID(),
+          route: "api.people.create",
+          message: original,
+        }),
+    );
     return NextResponse.json(
       {
         error: {
