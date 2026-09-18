@@ -3,6 +3,7 @@ import {
   checkRateLimit,
   clientKeyFromRequest,
   createRateLimiter,
+  enforceRateLimit,
   getRateLimitIdentityMode,
   getMemoryRateLimiter,
   getRateLimitConfig,
@@ -13,6 +14,64 @@ import {
 } from "@/lib/api/rate-limit";
 import { resolveRequestId } from "@/lib/api/request-id";
 import { logApi } from "@/lib/api/logger";
+
+/**
+ * P1 回归：CRUD / 导出路由此前完全无限流。
+ * 攻击场景：登录后循环 GET /api/charts/{id} 遍历 id 拖库。
+ */
+describe("enforceRateLimit（P1 回归）", () => {
+  const prev = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...prev };
+    getMemoryRateLimiter().reset();
+    setRateLimiterForTests(null);
+  });
+
+  function req(method = "GET", headers: Record<string, string> = {}) {
+    return new Request("https://app.test/api/charts", { method, headers });
+  }
+
+  it("额度内放行（返回 null）", async () => {
+    process.env.RATE_LIMIT_CRUD_MAX = "3";
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+    const r = await enforceRateLimit(req(), "crud", "api.charts.list");
+    expect(r).toBeNull();
+  });
+
+  it("超限时返回 429 并带限流响应头", async () => {
+    process.env.RATE_LIMIT_CRUD_MAX = "2";
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+
+    expect(await enforceRateLimit(req(), "crud", "api.charts.get")).toBeNull();
+    expect(await enforceRateLimit(req(), "crud", "api.charts.get")).toBeNull();
+    const third = await enforceRateLimit(req(), "crud", "api.charts.get");
+
+    expect(third).not.toBeNull();
+    expect(third!.status).toBe(429);
+    expect(third!.headers.get("Retry-After")).toBeTruthy();
+    expect(third!.headers.get("X-RateLimit-Limit")).toBe("2");
+    const body = (await third!.json()) as { error?: { message?: string } };
+    expect(body.error?.message).toMatch(/频繁/);
+  });
+
+  it("crud 桶默认 120/分钟", () => {
+    delete process.env.RATE_LIMIT_CRUD_MAX;
+    delete process.env.RATE_LIMIT_CRUD_WINDOW_MS;
+    expect(getRateLimitConfig("crud")).toEqual({ max: 120, windowMs: 60_000 });
+  });
+
+  it("crud 与其他桶相互隔离（不同桶不共享计数）", async () => {
+    process.env.RATE_LIMIT_CRUD_MAX = "1";
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+
+    expect(await enforceRateLimit(req(), "crud", "a")).toBeNull();
+    // crud 已用尽
+    expect(await enforceRateLimit(req(), "crud", "a")).not.toBeNull();
+    // reading 桶不受影响
+    expect(await enforceRateLimit(req(), "reading", "b")).toBeNull();
+  });
+});
 
 describe("rate-limit config", () => {
   const prev = { ...process.env };

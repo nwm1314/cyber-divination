@@ -6,6 +6,7 @@ import {
   getCloudLiuyao,
 } from "@/lib/storage/cloud-liuyao-store";
 import { assertSameOrigin } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 function unauthorized() {
   return NextResponse.json(
@@ -23,6 +24,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** GET /api/liuyao-charts/[id] */
 export async function GET(request: NextRequest, ctx: Ctx) {
+  const limited = await enforceRateLimit(request, "crud", "api.liuyao.get");
+  if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
@@ -46,6 +49,8 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 
 /** DELETE /api/liuyao-charts/[id] */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
+  const limited = await enforceRateLimit(request, "crud", "api.liuyao.delete");
+  if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(

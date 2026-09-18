@@ -7,6 +7,7 @@ import {
 } from "@/lib/storage/cloud-ziwei-store";
 import type { CloudZiweiUpsertBody } from "@/lib/storage/cloud-ziwei-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { cloudZiweiUpsertSchema } from "@/lib/contracts";
@@ -25,6 +26,8 @@ function unauthorized() {
 
 /** GET /api/ziwei-charts — 本人紫微列表 */
 export async function GET(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.ziwei.list");
+  if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
@@ -37,6 +40,8 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/ziwei-charts — 保存/覆盖紫微盘（userId 仅来自 session） */
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.ziwei.create");
+  if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(

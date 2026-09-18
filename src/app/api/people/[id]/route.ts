@@ -7,6 +7,7 @@ import {
   upsertCloudPerson,
 } from "@/lib/storage/cloud-person-store";
 import { assertSameOrigin, parseJsonBody } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { personInputSchema } from "@/lib/contracts";
@@ -27,6 +28,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 /** GET /api/people/[id] */
 export async function GET(request: NextRequest, context: RouteContext) {
+  const limited = await enforceRateLimit(request, "crud", "api.people.get");
+  if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
@@ -64,6 +67,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /** PUT /api/people/[id] — 全量更新（含关联 chartIds / ziweiIds） */
 export async function PUT(request: NextRequest, context: RouteContext) {
+  const limited = await enforceRateLimit(request, "crud", "api.people.put");
+  if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(
@@ -134,6 +139,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 /** DELETE /api/people/[id] */
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  const limited = await enforceRateLimit(request, "crud", "api.people.delete");
+  if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(

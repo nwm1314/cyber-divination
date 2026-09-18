@@ -14,6 +14,7 @@ import {
 } from "@/lib/storage/migrate";
 import type { CloudChartRecord } from "@/lib/storage/cloud-types";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { migrateBodySchema } from "@/lib/contracts";
 import { computeAuthoritativeChart } from "@/lib/bazi";
 import type { BirthProfile } from "@/lib/types";
@@ -27,6 +28,8 @@ import type { BirthProfile } from "@/lib/types";
  * userId 仅来自 session；忽略客户端伪造的 profile.userId。
  */
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.charts.migrate");
+  if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(

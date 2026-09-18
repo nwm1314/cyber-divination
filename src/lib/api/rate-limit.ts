@@ -13,13 +13,18 @@
  * - RATE_LIMIT_AUTH_WINDOW_MS（默认 60000）
  * - RATE_LIMIT_ACCOUNT_MAX（默认 5）
  * - RATE_LIMIT_ACCOUNT_WINDOW_MS（默认 60000）
+ * - RATE_LIMIT_CRUD_MAX（默认 120）—— 覆盖 CRUD 读写与数据导出
+ * - RATE_LIMIT_CRUD_WINDOW_MS（默认 60000）
  * - UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN（driver=redis 时必填，可与分享共用）
  */
 
+import { NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
+import { ErrorCode } from "@/lib/types";
+import { logApi } from "./logger";
 import { isIP } from "node:net";
 
-export type RateLimitBucket = "reading" | "share" | "auth" | "account";
+export type RateLimitBucket = "reading" | "share" | "auth" | "account" | "crud";
 
 export type RateLimitIdentityMode = "direct" | "trusted-proxy";
 
@@ -70,6 +75,12 @@ export function getRateLimitConfig(bucket: RateLimitBucket): RateLimitConfig {
     return {
       max: parsePositiveInt(process.env.RATE_LIMIT_AUTH_MAX, 10),
       windowMs: parsePositiveInt(process.env.RATE_LIMIT_AUTH_WINDOW_MS, 60_000),
+    };
+  }
+  if (bucket === "crud") {
+    return {
+      max: parsePositiveInt(process.env.RATE_LIMIT_CRUD_MAX, 120),
+      windowMs: parsePositiveInt(process.env.RATE_LIMIT_CRUD_WINDOW_MS, 60_000),
     };
   }
   return {
@@ -268,4 +279,48 @@ export function rateLimitResponseHeaders(result: RateLimitResult): Record<string
     "X-RateLimit-Reset": String(Math.ceil(result.resetMs / 1000)),
     "Retry-After": String(Math.max(1, Math.ceil(result.resetMs / 1000))),
   };
+}
+
+/**
+ * 便捷入口：按桶检查限流，超限时返回可直接使用的 429 响应。
+ *
+ * 用法：
+ * ```ts
+ * const limited = await enforceRateLimit(request, "crud", "api.charts.get");
+ * if (limited) return limited;
+ * ```
+ *
+ * 背景（P1）：此前 `checkRateLimit` 只覆盖 8 个路由，
+ * 所有 `[id]` CRUD 与 `account/export` **完全无限流**，
+ * 攻击者可高频枚举 id 拖库或消耗 DB 连接。
+ *
+ * @returns 超限时返回 429 NextResponse；放行时返回 null
+ */
+export async function enforceRateLimit(
+  request: Request,
+  bucket: RateLimitBucket,
+  routeLabel: string,
+): Promise<NextResponse | null> {
+  const clientKey = clientKeyFromRequest(request.headers);
+  const rl = await checkRateLimit(bucket, clientKey);
+  if (rl.allowed) return null;
+
+  logApi("warn", "api.rate_limited", {
+    requestId: crypto.randomUUID(),
+    route: routeLabel,
+    method: request.method,
+    status: 429,
+    clientKey,
+    errorCode: "RATE_LIMITED",
+  });
+
+  return NextResponse.json(
+    {
+      error: {
+        code: ErrorCode.INVALID_PROFILE,
+        message: "请求过于频繁，请稍后再试",
+      },
+    },
+    { status: 429, headers: rateLimitResponseHeaders(rl) },
+  );
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/storage/cloud-person-store";
 import type { PersonInput } from "@/lib/types/user";
 import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
 import { personInputSchema } from "@/lib/contracts";
@@ -25,6 +26,8 @@ function unauthorized() {
 
 /** GET /api/people — 本人人物列表 */
 export async function GET(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.people.list");
+  if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
@@ -37,6 +40,9 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/people — 创建/更新人物（userId 仅来自 session） */
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.people.create");
+  if (limited) return limited;
+
   const originErr = assertSameOrigin(request);
   if (originErr) {
     return NextResponse.json(

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { ErrorCode } from "@/lib/types";
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import { buildAccountExport } from "@/lib/auth/account";
 import { getUserById } from "@/lib/auth/users";
 
 export async function GET(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "crud", "api.account.export");
+  if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
 
