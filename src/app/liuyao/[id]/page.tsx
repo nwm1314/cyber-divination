@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getLiuyaoChart } from "@/lib/storage";
 import { Button } from "@/components/ui";
 import { ChartResult } from "@/components/liuyao";
 
-export default function LiuyaoChartPage() {
+function LiuyaoChartPageInner() {
   const params = useParams();
   const chartId = params?.id as string;
   const mounted = useSyncExternalStore(
@@ -114,5 +114,22 @@ export default function LiuyaoChartPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 LiuyaoChartPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function LiuyaoChartFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function LiuyaoChartPage() {
+  return (
+    <Suspense fallback={<LiuyaoChartFallback />}>
+      <LiuyaoChartPageInner />
+    </Suspense>
   );
 }

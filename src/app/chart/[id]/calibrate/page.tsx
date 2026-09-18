@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { BaziChart } from "@/lib/types";
@@ -19,7 +19,7 @@ import {
 import { CalibrateBox } from "@/components/reading";
 import { Button, Card } from "@/components/ui";
 
-export default function CalibratePage() {
+function CalibratePageInner() {
   const params = useParams();
   const chartId = (params?.id as string) ?? "";
   const mounted = useSyncExternalStore(
@@ -158,5 +158,22 @@ export default function CalibratePage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 CalibratePageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function CalibrateFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function CalibratePage() {
+  return (
+    <Suspense fallback={<CalibrateFallback />}>
+      <CalibratePageInner />
+    </Suspense>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,7 +19,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function LiuyaoSharePage({ params }: Props) {
+function ShareFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh">
+      <div className="safe-pad flex flex-1 flex-col max-w-lg mx-auto w-full pb-10 pt-4">
+        <p className="text-sm text-muted text-center pt-8">正在加载分享内容…</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 分享快照读取属未缓存数据，须放在 `<Suspense>` 岛内，
+ * 否则会阻塞整页预渲染（cacheComponents / PPR）。
+ */
+async function LiuyaoShareContent({ params }: Props) {
   const { token } = await params;
   const snapshot = await getShareSnapshot(token);
   if (!snapshot || (snapshot.kind && snapshot.kind !== "liuyao") || !snapshot.liuyao) {
@@ -84,5 +99,13 @@ export default async function LiuyaoSharePage({ params }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LiuyaoSharePage({ params }: Props) {
+  return (
+    <Suspense fallback={<ShareFallback />}>
+      <LiuyaoShareContent params={params} />
+    </Suspense>
   );
 }

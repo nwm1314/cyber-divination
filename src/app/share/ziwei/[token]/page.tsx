@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getShareSnapshot } from "@/lib/share";
@@ -44,7 +45,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ZiweiSharePage({ params }: Props) {
+function ShareFallback() {
+  return (
+    <div className="flex flex-col min-h-dvh cyber-grid">
+      <div className="safe-pad flex flex-col max-w-2xl mx-auto w-full gap-6 pb-8">
+        <p className="text-sm text-muted text-center pt-8">正在加载分享内容…</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 分享快照读取属未缓存数据，须放在 `<Suspense>` 岛内，
+ * 否则会阻塞整页预渲染（cacheComponents / PPR）。
+ */
+async function ZiweiShareContent({ params }: Props) {
   const { token } = await params;
   const snapshot = await getShareSnapshot(token);
 
@@ -74,5 +89,13 @@ export default async function ZiweiSharePage({ params }: Props) {
         <DisclaimerFooter text={snapshot.disclaimer} />
       </div>
     </div>
+  );
+}
+
+export default function ZiweiSharePage({ params }: Props) {
+  return (
+    <Suspense fallback={<ShareFallback />}>
+      <ZiweiShareContent params={params} />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getZiweiChart } from "@/lib/storage";
@@ -8,7 +8,7 @@ import { Button, Card } from "@/components/ui";
 import { TrustPanel } from "@/components/reading";
 import { YunStrip, ZiweiChartView } from "@/components/ziwei";
 
-export default function ZiweiChartPage() {
+function ZiweiChartPageInner() {
   const params = useParams();
   const chartId = params?.id as string;
   const mounted = useSyncExternalStore(
@@ -157,5 +157,22 @@ export default function ZiweiChartPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 ZiweiChartPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function ZiweiChartFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function ZiweiChartPage() {
+  return (
+    <Suspense fallback={<ZiweiChartFallback />}>
+      <ZiweiChartPageInner />
+    </Suspense>
   );
 }

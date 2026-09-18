@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { SiteHeader } from "@/components/auth/SiteHeader";
-import { AuthModeSync } from "@/components/auth/AuthModeSync";
-import { getServerSession } from "@/lib/auth/get-session";
+import { HeaderSlot } from "@/components/auth/HeaderSlot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,21 +16,28 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default async function RootLayout({
+/**
+ * 根布局保持**同步**且不读取运行时 API。
+ *
+ * 会话读取已下沉到 `HeaderSlot`（内部用 `<Suspense>` 包裹）。
+ * 这样首页、隐私政策、分享页等不依赖会话的路由可恢复静态预渲染，
+ * 而登录态 UI 仍能在请求时流式补入。
+ *
+ * 切勿在此处直接调用 `cookies()` / `getServerSession()` —— 那会让
+ * 整棵路由树退化为动态渲染（原先的缺陷即为此）。
+ */
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
-
   return (
     <html
       lang="zh-CN"
       className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col text-foreground bg-background">
-        <AuthModeSync session={session} />
-        <SiteHeader session={session} />
+        <HeaderSlot />
         {children}
       </body>
     </html>

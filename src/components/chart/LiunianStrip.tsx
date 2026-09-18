@@ -2,14 +2,19 @@ import type { BaziChart } from "@/lib/types";
 
 type Props = {
   liunian: BaziChart["liunian"];
-  /** 高亮年，默认今天公历年 */
+  /**
+   * 高亮年。**必传**：不要在组件内回落到 `new Date()` ——
+   * 那会在静态外壳预渲染时产出非确定性内容
+   * （cacheComponents 下报 `next-prerender-current-time-client`）。
+   * 调用方应在客户端挂载后再取"今年"并传入。
+   */
   highlightYear?: number;
 };
 
 export function LiunianStrip({ liunian, highlightYear }: Props) {
   if (!liunian.length) return <p className="text-sm text-muted">暂无流年数据</p>;
 
-  const hy = highlightYear ?? new Date().getFullYear();
+  const hy = highlightYear;
 
   return (
     <div className="overflow-x-auto pb-1">

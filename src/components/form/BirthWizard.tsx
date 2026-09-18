@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { BirthProfile, Gender } from "@/lib/types";
 import { computeChart } from "@/lib/bazi";
@@ -44,7 +44,12 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
-function emptyDraft(useTrueSolarTime = false): Draft {
+/**
+ * 预渲染期使用固定值，避免 `new Date()` 在静态外壳中产出非确定性内容
+ * （cacheComponents 下会报 `next-prerender-current-time-client`）。
+ * 真实"今天"在客户端挂载后由 useEffect 写入。
+ */
+function emptyDraft(useTrueSolarTime = false, baseDate = ""): Draft {
   return {
     name: "",
     formerName: "",
@@ -61,7 +66,7 @@ function emptyDraft(useTrueSolarTime = false): Draft {
     lng: "",
     alive: true,
     deathYear: "",
-    analysisBaseDate: todayISO(),
+    analysisBaseDate: baseDate,
     useTrueSolarTime,
   };
 }
@@ -146,11 +151,21 @@ function toProfile(draft: Draft): BirthProfile {
   };
 }
 
+const emptySubscribe = () => () => {};
+
+/**
+ * 今日日期（客户端）：预渲染期返回 ""（保持静态外壳确定性），
+ * 水合后返回真实值。用 `useSyncExternalStore` 而非 `useEffect`+`setState`。
+ */
+function useTodayISO(): string {
+  return useSyncExternalStore(emptySubscribe, todayISO, () => "");
+}
+
 export function BirthWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   // 客户端初始化时读取本地偏好（SSR 默认关闭，避免 hydration 不一致）
-  const [draft, setDraft] = useState<Draft>(() =>
+  const [draftState, setDraftState] = useState<Draft>(() =>
     emptyDraft(
       typeof window !== "undefined"
         ? getPrefs().defaultUseTrueSolarTime
@@ -160,6 +175,14 @@ export function BirthWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // 分析基准日默认取"今天"：预渲染期为 ""（保持静态外壳确定性），
+  // 水合后由 useTodayISO 提供真实日期。用户填过则尊重用户值。
+  const today = useTodayISO();
+  const draft: Draft = draftState.analysisBaseDate
+    ? draftState
+    : { ...draftState, analysisBaseDate: today };
+  const setDraft = setDraftState;
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
 

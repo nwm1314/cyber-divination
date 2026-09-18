@@ -1,12 +1,11 @@
-﻿"use client";
+"use client";
 
 import {
   useState,
   useCallback,
   useMemo,
   useEffect,
-  useSyncExternalStore,
-} from "react";
+  useSyncExternalStore, Suspense } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -44,7 +43,7 @@ function useMounted(): boolean {
   );
 }
 
-export default function ZiweiReadingPage() {
+function ZiweiReadingPageInner() {
   const params = useParams();
   const chartId = (params?.id as string) ?? "";
   const mounted = useMounted();
@@ -265,5 +264,22 @@ export default function ZiweiReadingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 ZiweiReadingPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function ZiweiReadingFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function ZiweiReadingPage() {
+  return (
+    <Suspense fallback={<ZiweiReadingFallback />}>
+      <ZiweiReadingPageInner />
+    </Suspense>
   );
 }

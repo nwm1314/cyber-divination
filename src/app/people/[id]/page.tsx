@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -29,7 +29,7 @@ function genderLabel(g?: "male" | "female"): string {
   return "未填";
 }
 
-export default function PersonDetailPage() {
+function PersonDetailPageInner() {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
   const isClient = useIsClient();
@@ -411,5 +411,22 @@ export default function PersonDetailPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 PersonDetailPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function PersonDetailFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function PersonDetailPage() {
+  return (
+    <Suspense fallback={<PersonDetailFallback />}>
+      <PersonDetailPageInner />
+    </Suspense>
   );
 }

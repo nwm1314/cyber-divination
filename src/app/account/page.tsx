@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AccountPanel } from "@/components/account/AccountPanel";
 import { getServerSession } from "@/lib/auth/get-session";
@@ -8,9 +9,26 @@ export const metadata: Metadata = {
   description: "导出数据、删除账号与云端档案。",
 };
 
-export default async function AccountPage() {
+/**
+ * 会话读取封装为独立岛并用 `<Suspense>` 包裹：
+ * `getServerSession()` 内部调用 `cookies()`（运行时 API），
+ * 直接写在页面组件里会阻塞整页预渲染。
+ * 见 Next.js 16 `01-app/01-getting-started/08-caching.md`。
+ */
+async function AccountPanelSlot() {
   const session = await getServerSession();
+  return <AccountPanel session={session} />;
+}
 
+function AccountPanelFallback() {
+  return (
+    <div className="rounded-xl border border-border bg-surface/60 p-6 text-center">
+      <p className="text-sm text-muted">正在读取账号信息…</p>
+    </div>
+  );
+}
+
+export default function AccountPage() {
   return (
     <div className="flex flex-1 flex-col cyber-grid min-h-dvh">
       <div className="safe-pad flex flex-1 flex-col max-w-lg mx-auto w-full gap-4 pb-10">
@@ -32,7 +50,9 @@ export default async function AccountPage() {
           </Link>
         </header>
 
-        <AccountPanel session={session} />
+        <Suspense fallback={<AccountPanelFallback />}>
+          <AccountPanelSlot />
+        </Suspense>
 
         <p className="text-center text-xs text-muted">
           <Link href="/privacy" className="hover:text-cyan transition-colors">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type {
   LiuyaoMethod,
@@ -74,11 +74,30 @@ function guessTimezone(): string {
   }
 }
 
+const emptySubscribe = () => () => {};
+
+/**
+ * 本地当前时间：预渲染期返回 ""（静态外壳保持确定性），
+ * 客户端水合后返回真实值。用 `useSyncExternalStore` 而非
+ * `useEffect`+`setState`，以符合 react-hooks 规则并避免额外渲染。
+ */
+function useLocalNowDatetime(): string {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => nowLocalDatetime(),
+    () => "",
+  );
+}
+
 export function CastForm() {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [method, setMethod] = useState<LiuyaoMethod>("coins");
-  const [datetime, setDatetime] = useState(nowLocalDatetime);
+  const nowDatetime = useLocalNowDatetime();
+  // 用户在 time 模式下可手动改；未改时跟随"此刻"
+  const [datetimeOverride, setDatetimeOverride] = useState<string | null>(null);
+  const datetime = datetimeOverride ?? nowDatetime;
+  const setDatetime = setDatetimeOverride;
   const [lines, setLines] = useState<YaoValue[]>([7, 7, 7, 7, 7, 7]);
   const [category, setCategory] = useState<"" | LiuyaoQuestionCategory>("");
   const [error, setError] = useState<string | null>(null);

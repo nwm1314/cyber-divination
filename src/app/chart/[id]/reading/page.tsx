@@ -5,8 +5,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
-  useSyncExternalStore,
-} from "react";
+  useSyncExternalStore, Suspense } from "react";
 import { useParams } from "next/navigation";
 import type {
   BaziChart,
@@ -70,7 +69,7 @@ function loadStored(chartId: string): {
   };
 }
 
-export default function ReadingPage() {
+function ReadingPageInner() {
   const params = useParams();
   const chartId = (params?.id as string) ?? "";
 
@@ -353,5 +352,22 @@ export default function ReadingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 ReadingPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function ReadingFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function ReadingPage() {
+  return (
+    <Suspense fallback={<ReadingFallback />}>
+      <ReadingPageInner />
+    </Suspense>
   );
 }

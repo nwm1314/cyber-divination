@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { BaziChart, ViewMode } from "@/lib/types";
@@ -65,7 +65,7 @@ const EMPTY_RELATIONS = {
   branchHai: [],
 };
 
-export default function ChartPage() {
+function ChartPageInner() {
   const params = useParams();
   const chartId = params?.id as string;
   const prefView = useDefaultViewMode();
@@ -135,8 +135,10 @@ export default function ChartPage() {
   const current = chart.dayun.find(
     (d) => !d.isPreDayun && d.index === chart.currentDayunIndex,
   );
-  const thisYear = new Date().getFullYear();
-  const liu = chart.liunian.find((l) => l.year === thisYear);
+  // 预渲染期不取系统时间（cacheComponents 下会报 next-prerender-current-time-client）；
+  // 挂载后再高亮"今年"流年。
+  const thisYear = mounted ? new Date().getFullYear() : null;
+  const liu = thisYear == null ? undefined : chart.liunian.find((l) => l.year === thisYear);
   const startAgeLabel = formatStartAgeDetail(chart.startAgeDetail);
 
   return (
@@ -197,7 +199,10 @@ export default function ChartPage() {
             </Card>
 
             <Card title="流年">
-              <LiunianStrip liunian={chart.liunian} highlightYear={thisYear} />
+              <LiunianStrip
+                liunian={chart.liunian}
+                highlightYear={thisYear ?? undefined}
+              />
             </Card>
           </div>
 
@@ -351,5 +356,22 @@ export default function ChartPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** 静态外壳：运行时 API 由 ChartPageInner 在 <Suspense> 内访问（cacheComponents/PPR） */
+function ChartFallback() {
+  return (
+    <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
+      <p className="text-sm text-muted">正在加载…</p>
+    </div>
+  );
+}
+
+export default function ChartPage() {
+  return (
+    <Suspense fallback={<ChartFallback />}>
+      <ChartPageInner />
+    </Suspense>
   );
 }
