@@ -53,21 +53,12 @@ export const CATEGORY_YONGSHEN: Readonly<
   other: "世",
 } as const;
 
-export const CATEGORY_LABEL: Readonly<
-  Record<LiuyaoQuestionCategory, string>
-> = {
-  wealth: "求财",
-  career: "功名事业",
-  lawsuit: "官非诉讼",
-  marriage: "婚恋感情",
-  health: "健康疾病",
-  travel: "出行迁移",
-  parents: "父母文书房产",
-  offspring: "子女晚辈",
-  siblings: "兄弟朋友合伙",
-  self: "自身/综合",
-  other: "其他（取世）",
-} as const;
+/**
+ * CATEGORY_LABEL 已移至 `@/lib/liuyao/labels`（纯数据、零引擎依赖），
+ * 以免客户端组件为取一个展示常量而拉入整个分析引擎。
+ * 此处 re-export 保持向后兼容。
+ */
+export { CATEGORY_LABEL } from "@/lib/liuyao/labels";
 
 /** 先匹配先生效；顺序即优先级 */
 export const YONGSHEN_RULES: readonly YongShenRule[] = [

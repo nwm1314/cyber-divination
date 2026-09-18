@@ -8,7 +8,7 @@ import type {
   YaoValue,
 } from "@/lib/types/liuyao";
 import { castLiuyao } from "@/lib/liuyao/cast";
-import { CATEGORY_LABEL } from "@/lib/liuyao/analyze/yongshen";
+import { CATEGORY_LABEL } from "@/lib/liuyao/labels";
 import { saveLiuyaoChart } from "@/lib/storage";
 import { Button, Card } from "@/components/ui";
 import { Field, inputClass } from "@/components/form/Field";
