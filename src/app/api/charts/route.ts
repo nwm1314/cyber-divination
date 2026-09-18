@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MESSAGES } from "@/content/zh";
 import { ErrorCode } from "@/lib/types";
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import {
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     const record = await upsertCloudChart(session.userId, body);
     return NextResponse.json({ record });
   } catch (e) {
-    const message = toSafeErrorMessage(e, "保存失败，请稍后重试", (original) =>
+    const message = toSafeErrorMessage(e, MESSAGES.saveFailedRetry, (original) =>
       logApi("error", "charts.save.error", { route: "api.charts.save", requestId: crypto.randomUUID(), message: original }),
     );
     return NextResponse.json(

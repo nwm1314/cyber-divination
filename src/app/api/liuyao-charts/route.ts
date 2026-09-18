@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MESSAGES } from "@/content/zh";
 import { ErrorCode } from "@/lib/types";
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       {
         error: {
           code: ErrorCode.INVALID_PROFILE,
-          message: toSafeErrorMessage(err, "保存失败，请稍后重试", (original) =>
+          message: toSafeErrorMessage(err, MESSAGES.saveFailedRetry, (original) =>
         logApi("error", "liuyao.save.error", { route: "api.liuyao.save", requestId: crypto.randomUUID(), message: original }),
       ),
         },

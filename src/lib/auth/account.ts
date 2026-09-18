@@ -20,6 +20,15 @@ export type AccountExportBundle = {
   notes: {
     localData: string;
   };
+  /**
+   * 云端数据导出失败时的说明。
+   *
+   * 修复（P2）：此前 `exportCloudDataForUser` 的异常被空 catch 吞掉，
+   * 失败时直接返回 `cloud: []`，用户会误以为「云端没有数据」。
+   * 删除路径已明确禁止伪成功（见下方 DeleteAccountResult 注释），
+   * 导出路径此前标准不一致，现补齐：失败时透出该字段而非静默为空。
+   */
+  cloudExportError?: string;
 };
 
 const LOCAL_DATA_NOTE =
@@ -40,10 +49,24 @@ export async function buildAccountExport(
     reports: [],
     calibrations: [],
   };
+  let cloudExportError: string | undefined;
   try {
     cloud = await exportCloudDataForUser(userId);
-  } catch {
-    // 钩子失败不阻断账号字段导出
+  } catch (err) {
+    // 不阻断账号字段导出，但必须让调用方/用户知道云端部分缺失，
+    // 否则会呈现为「导出成功且云端为空」的伪成功。
+    cloudExportError =
+      "云端数据导出失败，本次结果仅含账号字段。请稍后重试，或联系支持。";
+    // 原始错误只进服务端日志
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        level: "error",
+        event: "account.export.cloud_failed",
+        userId,
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    );
   }
 
   return {
@@ -60,6 +83,7 @@ export async function buildAccountExport(
     notes: {
       localData: LOCAL_DATA_NOTE,
     },
+    ...(cloudExportError ? { cloudExportError } : {}),
   };
 }
 

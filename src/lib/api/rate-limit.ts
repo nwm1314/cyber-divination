@@ -19,6 +19,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { MESSAGES } from "@/content/zh";
 import { Redis } from "@upstash/redis";
 import { ErrorCode } from "@/lib/types";
 import { logApi } from "./logger";
@@ -318,7 +319,7 @@ export async function enforceRateLimit(
     {
       error: {
         code: ErrorCode.INVALID_PROFILE,
-        message: "请求过于频繁，请稍后再试",
+        message: MESSAGES.rateLimited,
       },
     },
     { status: 429, headers: rateLimitResponseHeaders(rl) },

@@ -250,6 +250,7 @@ export default function ChartsPage() {
                 size="sm"
                 variant="secondary"
                 disabled={syncBusy}
+                loading={syncBusy}
                 onClick={() => void onPush()}
               >
                 同步到云端

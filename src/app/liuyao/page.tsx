@@ -38,6 +38,7 @@ function formatTime(iso: string): string {
 export default function LiuyaoHistoryPage() {
   const isClient = useIsClient();
   const [list, setList] = useState<LiuyaoListEntry[]>([]);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   const refreshList = useCallback(() => {
     setList(listLiuyaoCharts());
@@ -52,21 +53,33 @@ export default function LiuyaoHistoryPage() {
   }, [isClient]);
 
   const onPullCloud = useCallback(async () => {
+    setSyncMsg(null);
     try {
       const { pullCloudLiuyaoToLocal } = await import("@/lib/storage/sync");
-      await pullCloudLiuyaoToLocal();
+      const r = await pullCloudLiuyaoToLocal();
       refreshList();
+      setSyncMsg(
+        `已从云端拉取 ${r.pulled} 条` +
+          (r.failed.length ? `；失败 ${r.failed.length} 条` : ""),
+      );
     } catch {
-      // ignore
+      // 修复：此前静默忽略，用户点「拉取云端」失败时界面毫无反馈
+      setSyncMsg("拉取云端失败，请确认已登录后重试");
     }
   }, [refreshList]);
 
   const onPushCloud = useCallback(async () => {
+    setSyncMsg(null);
     try {
       const { pushLocalLiuyaoToCloud } = await import("@/lib/storage/sync");
-      await pushLocalLiuyaoToCloud();
+      const r = await pushLocalLiuyaoToCloud();
+      setSyncMsg(
+        `已推送 ${r.pushed} 条到云端` +
+          (r.failed.length ? `；失败 ${r.failed.length} 条` : ""),
+      );
     } catch {
-      // ignore
+      // 修复：此前静默忽略，用户点「推送云端」失败时界面毫无反馈
+      setSyncMsg("推送云端失败，请确认已登录后重试");
     }
   }, []);
 
@@ -118,6 +131,16 @@ export default function LiuyaoHistoryPage() {
             拉取云端
           </Button>
         </div>
+
+        {syncMsg && (
+          <p
+            className="text-xs text-muted leading-relaxed"
+            role="status"
+            aria-live="polite"
+          >
+            {syncMsg}
+          </p>
+        )}
 
         {!isClient ? (
           <Card title="加载中">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { Disclaimer } from "@/components/Disclaimer";
-import { ARTS, BRAND, HOME, type ArtEntry } from "@/content/zh";
+import { ARTS, BRAND, HOME, MESSAGES, type ArtEntry } from "@/content/zh";
 
 function ArtCard({ art }: { art: ArtEntry }) {
   const live = art.status === "live" && art.href;
@@ -24,7 +24,7 @@ function ArtCard({ art }: { art: ArtEntry }) {
         </div>
         {live ? (
           <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-cyan/35 bg-cyan/10 text-cyan">
-            可用
+            {HOME.available}
           </span>
         ) : (
           <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-border text-muted">
@@ -120,7 +120,7 @@ export default function Home() {
               href="/people"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-base font-medium border border-gold/40 text-gold hover:bg-gold/10 transition-all w-full sm:w-auto"
             >
-              人物档案
+              {HOME.peopleLink}
             </Link>
             <Link
               href="/charts"
@@ -141,8 +141,8 @@ export default function Home() {
 
           <Card
             className="border-gold/20"
-            title="免责声明"
-            subtitle="请在使用前阅读"
+            title={MESSAGES.disclaimerTitle}
+            subtitle={MESSAGES.disclaimerSubtitle}
           >
             <Disclaimer />
           </Card>
@@ -151,10 +151,10 @@ export default function Home() {
         <footer className="w-full max-w-3xl py-6 text-center text-xs text-muted space-x-3">
           <span>{BRAND.footer}</span>
           <Link href="/privacy" className="hover:text-cyan transition-colors">
-            隐私政策
+            {HOME.privacyLink}
           </Link>
           <Link href="/account" className="hover:text-cyan transition-colors">
-            账号
+            {HOME.accountLink}
           </Link>
         </footer>
       </div>

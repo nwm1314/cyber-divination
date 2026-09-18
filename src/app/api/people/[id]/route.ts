@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MESSAGES } from "@/content/zh";
 import { ErrorCode } from "@/lib/types";
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import {
@@ -122,7 +123,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     });
     return NextResponse.json({ person });
   } catch (e) {
-    const message = toSafeErrorMessage(e, "保存失败，请检查填写内容后重试", (original) =>
+    const message = toSafeErrorMessage(e, MESSAGES.saveFailed, (original) =>
       logApi("error", "people.update.error", { route: "api.people.update", requestId: crypto.randomUUID(), message: original }),
     );
     return NextResponse.json(

@@ -70,6 +70,34 @@ export const HOME = {
   comingSoon: "即将推出",
   archives: "我的档案",
   settings: "设置",
+  /** 术数卡片可用状态徽标 */
+  available: "可用",
+  /** 首页底部导航 */
+  peopleLink: "人物档案",
+  privacyLink: "隐私政策",
+  accountLink: "账号",
+} as const;
+
+/** 通用无障碍与状态文案 */
+export const A11Y = {
+  skipToContent: "跳到主要内容",
+  mainNavLabel: "术数导航",
+  loading: "正在加载…",
+  saving: "保存中…",
+  syncing: "同步中…",
+  deleting: "删除中…",
+} as const;
+
+/** 通用错误与空态文案（集中管理，避免各页硬编码） */
+export const MESSAGES = {
+  saveFailed: "保存失败，请检查填写内容后重试",
+  saveFailedRetry: "保存失败，请稍后重试",
+  rateLimited: "请求过于频繁，请稍后再试",
+  cloudFailed: "云端操作失败，请确认已登录后重试",
+  notFoundChart: "未找到命盘数据，请先完成排盘。",
+  readingFailed: "解读生成失败，请稍后重试。",
+  disclaimerTitle: "免责声明",
+  disclaimerSubtitle: "请在使用前阅读",
 } as const;
 
 /**
