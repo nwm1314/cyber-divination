@@ -132,7 +132,63 @@ export function checkAuthSecretStrength(secret: string | undefined): string | nu
     return "AUTH_SECRET 强度不足：至少需要包含两类字符（大小写/数字/符号中的两类）";
   }
 
+  // 连续 ASCII 段（如 abcdefghij…、0123456789…）：V-1 复验发现
+  // `abcdefghijklmnopqrstuvwxyz012345` 能同时满足长度与字符类要求，
+  // 但它是纯字母表顺序 + 数字，熵极低。此处按"最长递增/递减连续段"判定。
+  if (longestConsecutiveRun(value) >= 6) {
+    return "AUTH_SECRET 强度不足：包含过长的连续顺序片段（如字母表或数字序列），熵不足";
+  }
+
+  // Shannon 熵兜底：即使通过了上面的模式检查，整体熵仍然过低的
+  // （如 `aabbccddee…` 这类周期短、字符集小的构造）也应拒绝。
+  // 阈值取 3.0 bit/字符：随机 base64url 约 5.0–5.5，而上述构造通常 <2.5。
+  if (shannonEntropyPerChar(value) < 3.0) {
+    return "AUTH_SECRET 强度不足：整体字符分布熵过低，请使用随机生成的高熵密钥（如 openssl rand -base64 48）";
+  }
+
   return null;
+}
+
+/**
+ * 最长"连续 ±1"片段的长度（按字符码点）。
+ * `abc` → 3；`abcdefghij` → 10；`13579` → 1（步长 2 不算）。
+ * 只统计步长恒为 ±1 的最长连续段。
+ */
+function longestConsecutiveRun(value: string): number {
+  if (value.length < 2) return value.length;
+  let best = 1;
+  let run = 1;
+  let dir = 0; // 1 递增，-1 递减，0 未定
+  for (let i = 1; i < value.length; i++) {
+    const diff = value.charCodeAt(i) - value.charCodeAt(i - 1);
+    if (diff === 1 || diff === -1) {
+      if (dir === 0 || dir === diff) {
+        run++;
+        dir = diff;
+      } else {
+        run = 2;
+        dir = diff;
+      }
+    } else {
+      run = 1;
+      dir = 0;
+    }
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+/** 每字符 Shannon 熵（bit） */
+function shannonEntropyPerChar(value: string): number {
+  if (value.length === 0) return 0;
+  const freq = new Map<string, number>();
+  for (const ch of value) freq.set(ch, (freq.get(ch) ?? 0) + 1);
+  let h = 0;
+  for (const n of freq.values()) {
+    const p = n / value.length;
+    h -= p * Math.log2(p);
+  }
+  return h;
 }
 
 /** 检测连续递增/递减的字符序列（如 abcdef、654321） */

@@ -102,6 +102,44 @@ function hasRepeatedBlock(value) {
   return false;
 }
 
+/** 最长"连续 ±1"片段的长度（与 validate-prod.ts 对齐） */
+function longestConsecutiveRun(value) {
+  if (value.length < 2) return value.length;
+  let best = 1;
+  let run = 1;
+  let dir = 0;
+  for (let i = 1; i < value.length; i++) {
+    const diff = value.charCodeAt(i) - value.charCodeAt(i - 1);
+    if (diff === 1 || diff === -1) {
+      if (dir === 0 || dir === diff) {
+        run++;
+        dir = diff;
+      } else {
+        run = 2;
+        dir = diff;
+      }
+    } else {
+      run = 1;
+      dir = 0;
+    }
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+/** 每字符 Shannon 熵（bit） */
+function shannonEntropyPerChar(value) {
+  if (value.length === 0) return 0;
+  const freq = new Map();
+  for (const ch of value) freq.set(ch, (freq.get(ch) ?? 0) + 1);
+  let h = 0;
+  for (const n of freq.values()) {
+    const p = n / value.length;
+    h -= p * Math.log2(p);
+  }
+  return h;
+}
+
 /** 与 src/lib/config/validate-prod.ts 的 checkAuthSecretStrength 对齐 */
 function checkAuthSecretStrength(secret) {
   const value = secret?.trim();
@@ -131,6 +169,12 @@ function checkAuthSecretStrength(secret) {
   ).length;
   if (classes < 2) {
     return "AUTH_SECRET 强度不足：至少需要包含两类字符（大小写/数字/符号中的两类）";
+  }
+  if (longestConsecutiveRun(value) >= 6) {
+    return "AUTH_SECRET 强度不足：包含过长的连续顺序片段（如字母表或数字序列），熵不足";
+  }
+  if (shannonEntropyPerChar(value) < 3.0) {
+    return "AUTH_SECRET 强度不足：整体字符分布熵过低，请使用随机生成的高熵密钥（如 openssl rand -base64 48）";
   }
   return null;
 }
