@@ -1,4 +1,4 @@
-﻿# 赛博命理 · Cyber Divination
+# 赛博命理 · Cyber Divination
 
 基于 [bazi-skill](https://github.com/jinchenma94/bazi-skill) 的 Web 赛博术数工具（包名 `cyber-divination`）。  
 总品牌 **赛博命理**；子产品：赛博八字 / 赛博紫微 / 赛博六爻。
@@ -13,6 +13,19 @@
 - [部署与运维](docs/DEPLOY.md)（Vercel、Docker、Postgres、Upstash）
 - [QA 验收](docs/QA.md)
 
+### 全量 Review（产品 / 设计 / 开发三视角）
+
+提示词库见 [REVIEW_PROMPTS.md](docs/REVIEW_PROMPTS.md)。本轮产出：
+
+| 报告 | 视角 |
+|---|---|
+| [REVIEW_SYNTHESIS.md](docs/REVIEW_SYNTHESIS.md) | **仲裁总表（先读这份）** |
+| [REVIEW_PRODUCT_BASELINE.md](docs/REVIEW_PRODUCT_BASELINE.md) / [POSITIONING](docs/REVIEW_PRODUCT_POSITIONING.md) / [IA](docs/REVIEW_PRODUCT_IA.md) / [TRUST](docs/REVIEW_PRODUCT_TRUST.md) | 产品 |
+| [REVIEW_DESIGN_INVENTORY.md](docs/REVIEW_DESIGN_INVENTORY.md) / [CONSISTENCY](docs/REVIEW_DESIGN_CONSISTENCY.md) / [MOBILE](docs/REVIEW_DESIGN_MOBILE.md) / [A11Y](docs/REVIEW_DESIGN_A11Y.md) | 设计 |
+| [REVIEW_ENGINEERING_BASELINE.md](docs/REVIEW_ENGINEERING_BASELINE.md) / [ARCHITECTURE](docs/REVIEW_ENG_ARCHITECTURE.md) / [SECURITY](docs/REVIEW_ENG_SECURITY.md) / [ENGINE](docs/REVIEW_ENG_ENGINE.md) / [OPS](docs/REVIEW_ENG_OPS.md) | 开发 |
+| [FIX_REPORT_P0.md](docs/FIX_REPORT_P0.md) / [P1](docs/FIX_REPORT_P1.md) / [P2](docs/FIX_REPORT_P2.md) | 修复记录 |
+| [REVIEW_VERIFICATION.md](docs/REVIEW_VERIFICATION.md) | 独立复验 |
+
 ## 当前状态
 
 - [x] MVP 八字全链路（排盘 → 解读 → 反馈 → 分享）
@@ -20,8 +33,26 @@
 - [x] W18–W21：限流、观测、账号、Postgres、六爻云端、品牌、紫微流月/流日
 - [x] T231：原阶段代码与文档收口
 - [x] W22–W28：专业准确性、安全、GitHub 规范与 Docker 生产化整改（15/18 done，T300/T301/T251 待外部验证）
+- [x] 全量 review 与整改（详见 `docs/REVIEW_PROMPTS.md`、`docs/REVIEW_SYNTHESIS.md`）
+      —— 修复 6 项 P0、11 项 P1、10 项 P2
 
 > 当前建议定位：传统文化学习型 **Alpha/Beta**（核心整改已基本完成；Docker 运行时与移动设备验收由 CI/发布门禁继续完成）。
+
+### 实测工程基线
+
+以下数字为**实测**（`npm run lint -- --max-warnings=0 && npm test && npx tsc --noEmit && npm run build`），
+替代此前文档中的旧快照：
+
+| 指标 | 实测值 |
+|---|---|
+| ESLint | **0 warning / 0 error**（此前文档记为 8 warning） |
+| 类型检查 | `tsc --noEmit` **0 error** |
+| 单元测试 | **74 个文件 / 611 个用例全通过** |
+| 生产构建 | **成功**；**17 条静态路由**（`◐ Partial Prerender`），26 个 HTML 外壳预渲染 |
+| 代码规模 | `src/**` 333 个 TS/TSX 文件、约 40,147 行 |
+
+> 说明：`cacheComponents: true`（Next.js 16 PPR）已启用，首页/隐私政策/分享页等
+> 恢复为「静态外壳 + 流式动态内容」，不再是全站按请求 SSR。
 
 ## 本地开发
 
