@@ -149,7 +149,7 @@ export const baziReadingRequestSchema = z
     if (!body.profile && body.chart == null) {
       ctx.addIssue({
         code: "custom",
-        message: "缂哄皯 Bazi 鐢熷嚭淇℃伅鎴栨湁鏁堢洏",
+        message: "缺少 Bazi 出生信息或有效命盘",
         path: ["profile"],
       });
     }

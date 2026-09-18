@@ -64,6 +64,31 @@ describe("authoritative Bazi request validation", () => {
     const result = validateAuthoritativeBaziRequest({ chart: legacy });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/legacy|妯℃澘/);
+    if (!result.ok) expect(result.message).toMatch(/legacy|模板/);
+  });
+
+  it("返回可读的中文错误信息（防乱码回归）", () => {
+    // 回归守卫：曾出现 UTF-8 被按 GBK 解码的 mojibake，导致 API 错误提示为乱码。
+    // 此处断言关键错误文案既非 ASCII 兜底、也不含替换字符或典型乱码码位。
+    const legacy = stripAuthorityInput(computeChart(profile()));
+    const result = validateAuthoritativeBaziRequest({ chart: legacy });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain("legacy");
+      expect(result.message).toMatch(/[\u4e00-\u9fff]/);
+      expect(result.message).not.toContain("\uFFFD");
+      // 常见 mojibake 码位（GBK 误读 UTF-8 的产物，如「鐩樸€嶃€岄杽」等）
+      expect(result.message).not.toMatch(/[\u9400-\u9fff]/u);
+    }
+  });
+
+  it("请求体非法时返回可读错误而非乱码", () => {
+    const result = validateAuthoritativeBaziRequest({ nonsense: true });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).not.toContain("\uFFFD");
+      expect(result.message.length).toBeGreaterThan(0);
+    }
   });
 });

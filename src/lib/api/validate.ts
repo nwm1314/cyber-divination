@@ -51,7 +51,7 @@ export function validateAuthoritativeBaziRequest(
   const parsed = baziReadingRequestSchema.safeParse(body);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
-    return { ok: false, message: first?.message ?? "Bazi璇锋眰浣撴棤鏁?" };
+    return { ok: false, message: first?.message ?? "Bazi 请求体无效" };
   }
 
   const source = parsed.data.profile ? "profile" : "embedded";
@@ -65,8 +65,8 @@ export function validateAuthoritativeBaziRequest(
       ok: false,
       message:
         source === "embedded"
-          ? "legacy 鐩樻棤鏈嶅姟绔潈濞佺敤鎴疯緭鍏ワ紝璇峰悎骞舵柊鐗堟。妗ｆ垨浣跨敤妯℃澘瑙ｈ"
-          : profileResult.error.issues[0]?.message ?? "Bazi 鐢熷嚭淇℃伅鏃犳晥",
+          ? "legacy 盘缺少服务端权威输入，请合并新版档案或改用模板解读"
+          : profileResult.error.issues[0]?.message ?? "Bazi 出生信息无效",
     };
   }
 
@@ -77,7 +77,7 @@ export function validateAuthoritativeBaziRequest(
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Bazi 鍛界洏璁＄畻澶辫触",
+      message: error instanceof Error ? error.message : "Bazi 命盘计算失败",
     };
   }
 
