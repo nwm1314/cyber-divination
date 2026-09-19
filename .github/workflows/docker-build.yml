@@ -99,10 +99,11 @@ jobs:
           docker compose -f compose.yaml up -d --force-recreate web
           curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:3000/api/health
 
+      # 不在本步结束时 down：下一步的浏览器冒烟要打的正是这个 acceptance 栈。
+      # 清理统一交给末尾 if: always() 的步骤，失败时同样会执行。
       - name: Run production migration, readiness, and persistence acceptance
         run: |
           compose_files=(-f compose.production.yaml -f compose.acceptance.yaml)
-          trap 'docker compose "${compose_files[@]}" down --volumes --remove-orphans' EXIT
           docker compose "${compose_files[@]}" up -d --build
           curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:18081/api/health/ready
           test "$(docker compose "${compose_files[@]}" exec -T web id -un | tr -d '\r')" = "nextjs"
@@ -115,3 +116,7 @@ jobs:
         run: npm run test:e2e -- --project=chromium --project=iphone-13 --project=pixel-5
         env:
           E2E_BASE_URL: http://127.0.0.1:18081
+
+      - name: Tear down acceptance stack
+        if: always()
+        run: docker compose -f compose.production.yaml -f compose.acceptance.yaml down --volumes --remove-orphans
