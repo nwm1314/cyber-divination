@@ -13,6 +13,20 @@ function execute(command) {
   switch (String(name ?? "").toLowerCase()) {
     case "ping":
       return "PONG";
+    // 分享存储（src/lib/share/upstash-redis.ts）需要 set/get/del 三件事。
+    // 请求参数按原样存：@upstash/redis 虽恒带 Upstash-Encoding: base64 头，
+    // 但 /pipeline 体里的命令参数是 plain UTF-8，解码反而会产生乱码。
+    // 与 pexpire/pttl 一致地不模拟过期：EX 参数收下但不过期。
+    case "set":
+      values.set(key, command[2]);
+      return "OK";
+    case "get":
+      return values.has(key) ? values.get(key) : null;
+    case "del": {
+      let removed = 0;
+      for (const k of command.slice(1)) if (values.delete(k)) removed++;
+      return removed;
+    }
     case "incr": {
       const next = Number(values.get(key) ?? 0) + 1;
       values.set(key, next);
@@ -46,7 +60,7 @@ const server = createServer(async (request, response) => {
   const commands = isPipeline ? parsed : [parsed];
   const result = isPipeline
     ? commands.map((item) => ({ result: encode(execute(item), base64) }))
-    : { result: encode(execute(command, base64), base64) };
+    : { result: encode(execute(command), base64) };
   response.writeHead(200, { "content-type": "application/json" });
   response.end(JSON.stringify(result));
 });

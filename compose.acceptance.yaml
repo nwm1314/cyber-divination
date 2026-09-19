@@ -38,12 +38,15 @@ services:
     ports: !override
       - "127.0.0.1:18081:3000"
     environment:
-      AUTH_SECRET: acceptance-only-auth-secret
+      AUTH_SECRET: Zx9pQ2mVt7Lk4Rw8Bn3Hy6Jd1Fg5Cs0Ae2Uo9Pi4Xz7Vb3Nq8Mt5Ky
       AUTH_ALLOW_DEV_LOGIN: "0"
       DATABASE_URL: postgres://cyber:cyber@db:5432/cyber_divination
       CLOUD_STORE_DRIVER: postgres
       DB_SKIP_ENSURE_SCHEMA: "1"
-      SHARE_STORE_DRIVER: local
+      # 生产校验器禁止 local 分享存储，而本栈 NODE_ENV=production（compose.production.yaml）。
+      # 分享读写走 redis-rest 桩（scripts/redis-rest-stub.mjs 已实现 set/get/del），
+      # 让 acceptance 保持生产形状；/app/data 卷的持久性由 acceptance.txt 断言覆盖。
+      SHARE_STORE_DRIVER: upstash
       RATE_LIMIT_DRIVER: redis
       RATE_LIMIT_TRUSTED_PROXY: "0"
       UPSTASH_REDIS_REST_URL: http://redis-rest:8080
