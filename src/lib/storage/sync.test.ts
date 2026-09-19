@@ -6,9 +6,14 @@ import {
   formatSyncState,
   deleteArchive,
   pushLocalChartsToCloud,
+  pullCloudChartsToLocal,
 } from "./sync";
-import { saveProfile, saveChart, getChart } from "./index";
-import { upsertCloudChartApi } from "./cloud-client";
+import { saveProfile, saveChart, getChart, listCharts } from "./index";
+import {
+  fetchCloudChart,
+  fetchCloudChartList,
+  upsertCloudChartApi,
+} from "./cloud-client";
 import type { BirthProfile, BaziChart } from "@/lib/types";
 
 vi.mock("./cloud-client", () => {
@@ -119,5 +124,113 @@ describe("sync lifecycle", () => {
     expect(result).toEqual({ pushed: 2, failed: [] });
     expect(upsertCloudChartApi).toHaveBeenCalledTimes(2);
     expect(getLastSyncState()).toMatchObject({ status: "success", successCount: 2 });
+  });
+});
+
+/**
+ * B5：拉取路径此前是「1 次列表 + N 次详情」顺序 await（N+1 串行）。
+ * 现改为受控并发，且**落盘顺序仍等于列表顺序**（并发完成顺序不得影响本机写入次序）。
+ */
+describe("pullCloudChartsToLocal 详情并发（B5）", () => {
+  const restoreDefaults = () => {
+    vi.mocked(fetchCloudChartList).mockImplementation(async () => ({
+      ok: true,
+      data: { items: [] },
+    }));
+    vi.mocked(fetchCloudChart).mockImplementation(async () => ({
+      ok: true,
+      data: { record: {} },
+    }));
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", mockStorage());
+    vi.stubGlobal("sessionStorage", mockStorage());
+    localStorage.setItem("bd_account_mode", "1");
+    restoreDefaults();
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const recordFor = (id: string) => ({
+    id,
+    userId: "u1",
+    profile: { ...profile, id },
+    chart: { ...chart, profileId: id },
+    createdAt: "2026-08-12T00:00:00.000Z",
+    updatedAt: "2026-08-12T00:00:00.000Z",
+  });
+
+  const itemFor = (id: string) => ({
+    profileId: id,
+    name: id,
+    date: "1990-01-01",
+    updatedAt: "2026-08-12T00:00:00.000Z",
+  });
+
+  it("详情并发发出，并按列表顺序落盘", async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `sync-c${i}`);
+    vi.mocked(fetchCloudChartList).mockImplementationOnce(async () => ({
+      ok: true,
+      data: { items: ids.map(itemFor) },
+    }));
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.mocked(fetchCloudChart).mockImplementation(async (id: string) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      // 靠后的 id 先返回：若按完成顺序落盘，本机列表会倒序
+      await new Promise((r) => setTimeout(r, (ids.length - ids.indexOf(id)) * 3));
+      inFlight -= 1;
+      return { ok: true, data: { record: recordFor(id) } };
+    });
+
+    const result = await pullCloudChartsToLocal();
+
+    expect(result.pulled).toBe(12);
+    expect(result.failed).toEqual([]);
+    // 并发被真正用上，且不超过上限（浏览器同域本身也只 6 条）
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(6);
+    expect(listCharts().map((e) => e.profileId)).toEqual(ids);
+  });
+
+  it("单条详情失败只记该条，其余仍落库", async () => {
+    const ids = ["sync-f1", "sync-f2", "sync-f3"];
+    vi.mocked(fetchCloudChartList).mockImplementationOnce(async () => ({
+      ok: true,
+      data: { items: ids.map(itemFor) },
+    }));
+    vi.mocked(fetchCloudChart).mockImplementation(async (id: string) =>
+      id === "sync-f2"
+        ? { ok: false, error: { message: "boom", code: "NETWORK" } }
+        : { ok: true, data: { record: recordFor(id) } },
+    );
+
+    const result = await pullCloudChartsToLocal();
+
+    expect(result.pulled).toBe(2);
+    expect(result.failed).toEqual([{ profileId: "sync-f2", message: "boom" }]);
+    expect(getChart("sync-f1")).not.toBeNull();
+    expect(getChart("sync-f2")).toBeNull();
+    expect(getChart("sync-f3")).not.toBeNull();
+  });
+
+  it("列表请求失败时不发任何详情请求", async () => {
+    vi.mocked(fetchCloudChartList).mockImplementationOnce(async () => ({
+      ok: false,
+      error: { message: "unauthorized", code: "AUTH_REQUIRED" },
+    }));
+    const spy = vi.mocked(fetchCloudChart);
+    spy.mockClear();
+
+    const result = await pullCloudChartsToLocal();
+
+    expect(result.pulled).toBe(0);
+    expect(result.failed).toEqual([
+      { profileId: "*", message: "unauthorized" },
+    ]);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

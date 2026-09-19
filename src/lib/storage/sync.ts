@@ -270,6 +270,37 @@ export async function pushLocalChartsToCloud(): Promise<SyncPushResult> {
 }
 
 /**
+ * 拉取详情时的并发上限（B5）。
+ *
+ * 三个 pull 路径此前是「1 次列表 + N 次详情」**顺序** await：
+ * 总耗时 ≈ N × RTT，20 条档案在远程部署下就要数秒。
+ * 这里改为受控并发：请求**条数不变**（真正的批量化需要 bulk 端点，
+ * 代价是单次响应体积随档案数线性增长 —— 见 docs/FIX_REPORT_ROUND3.md 的取舍说明），
+ * 但墙钟时间降到约 ⌈N/6⌉ × RTT（浏览器同域本身也只并发 6 条）。
+ *
+ * 落盘动作仍在并发之后按列表顺序执行，保持与顺序版本一致的写入次序。
+ */
+const PULL_CONCURRENCY = 6;
+
+async function mapLimited<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let cursor = 0;
+  const workerCount = Math.min(Math.max(limit, 1), items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      out[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+/**
  * 从云端拉取全部档案写入本机（显式覆盖同 id 本地数据）。
  */
 export async function pullCloudChartsToLocal(): Promise<SyncPullResult> {
@@ -281,19 +312,22 @@ export async function pullCloudChartsToLocal(): Promise<SyncPullResult> {
     if (!listRes.ok) {
       failed.push({ profileId: "*", message: listRes.error.message });
       return { pulled, failed, items: [] };
-  }
+    }
 
     const items = listRes.data.items;
+    const details = await mapLimited(items, PULL_CONCURRENCY, (item) =>
+      fetchCloudChart(item.profileId),
+    );
 
-    for (const item of items) {
-      const detail = await fetchCloudChart(item.profileId);
+    for (let i = 0; i < items.length; i++) {
+      const detail = details[i];
       if (!detail.ok) {
-      failed.push({
-        profileId: item.profileId,
-        message: detail.error.message,
-      });
-      continue;
-    }
+        failed.push({
+          profileId: items[i].profileId,
+          message: detail.error.message,
+        });
+        continue;
+      }
       applyRecordToLocal(detail.data.record);
       pulled += 1;
     }
@@ -399,30 +433,33 @@ export async function pullCloudZiweiToLocal(): Promise<SyncPullResult> {
   }
 
     const items = listRes.data.items;
+    const details = await mapLimited(items, PULL_CONCURRENCY, (item) =>
+      fetchCloudZiwei(item.chartId),
+    );
 
-    for (const item of items) {
-      const detail = await fetchCloudZiwei(item.chartId);
+    for (let i = 0; i < items.length; i++) {
+      const detail = details[i];
       if (!detail.ok) {
-      failed.push({
-        profileId: item.chartId,
-        message: detail.error.message,
-      });
-      continue;
-    }
+        failed.push({
+          profileId: items[i].chartId,
+          message: detail.error.message,
+        });
+        continue;
+      }
       const rec = detail.data.record;
-      saveZiweiChart(rec.chart, { solarDate: rec.solarDate ?? item.date });
+      saveZiweiChart(rec.chart, { solarDate: rec.solarDate ?? items[i].date });
       pulled += 1;
     }
 
     return {
-    pulled,
-    failed,
-    items: items.map((i) => ({
-      profileId: i.chartId,
-      name: i.name,
-      date: i.date,
-      updatedAt: i.updatedAt,
-    })),
+      pulled,
+      failed,
+      items: items.map((i) => ({
+        profileId: i.chartId,
+        name: i.name,
+        date: i.date,
+        updatedAt: i.updatedAt,
+      })),
     };
   } catch (error) {
     failed.push({
@@ -485,27 +522,34 @@ export async function pullCloudLiuyaoToLocal(): Promise<SyncPullResult> {
       failed.push({ profileId: "*", message: listRes.error.message });
       return { pulled, failed, items: [] };
   }
-    for (const item of listRes.data.items) {
-      const detail = await fetchCloudLiuyao(item.chartId);
+    const liuyaoItems = listRes.data.items;
+    const details = await mapLimited(
+      liuyaoItems,
+      PULL_CONCURRENCY,
+      (item) => fetchCloudLiuyao(item.chartId),
+    );
+
+    for (let i = 0; i < liuyaoItems.length; i++) {
+      const detail = details[i];
       if (!detail.ok) {
-      failed.push({
-        profileId: item.chartId,
-        message: detail.error.message,
-      });
-      continue;
-    }
+        failed.push({
+          profileId: liuyaoItems[i].chartId,
+          message: detail.error.message,
+        });
+        continue;
+      }
       saveLiuyaoChart(detail.data.record.chart);
       pulled += 1;
     }
     return {
-    pulled,
-    failed,
-    items: listRes.data.items.map((i) => ({
-      profileId: i.chartId,
-      name: i.question,
-      date: i.updatedAt.slice(0, 10),
-      updatedAt: i.updatedAt,
-    })),
+      pulled,
+      failed,
+      items: liuyaoItems.map((i) => ({
+        profileId: i.chartId,
+        name: i.question,
+        date: i.updatedAt.slice(0, 10),
+        updatedAt: i.updatedAt,
+      })),
     };
   } catch (error) {
     failed.push({
