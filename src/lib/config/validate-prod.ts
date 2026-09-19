@@ -27,7 +27,15 @@ export function isFileShareStoreForbiddenInProd(): boolean {
 
 import { DEV_AUTH_SECRET_FALLBACK } from "@/lib/auth/constants";
 
+/**
+ * 「是否生产」的判据。不能只看 NODE_ENV：Next 的 standalone 入口 server.js 会
+ * 无条件执行 `process.env.NODE_ENV = 'production'`，任何经该入口启动的栈都会被
+ * 当成生产部署。RUNTIME_PROFILE 由镜像/编排显式声明，优先级更高；未声明时回落
+ * 到 NODE_ENV —— 漏配标记只会让校验更严，不会静默放行。
+ */
 function isProduction(): boolean {
+  const profile = process.env.RUNTIME_PROFILE?.trim().toLowerCase();
+  if (profile) return profile === "production";
   return process.env.NODE_ENV === "production";
 }
 

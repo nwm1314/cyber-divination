@@ -15,6 +15,7 @@ const STRONG_SECRET = "9f3Kx7Qw2Lm5Zt8Vb1Nc4Rdy6Hj0Pa2Sg6Uh8Wk3Ej5Tn";
 
 const ENV_KEYS = [
   "NODE_ENV",
+  "RUNTIME_PROFILE",
   "AUTH_SECRET",
   "AUTH_ALLOW_DEV_LOGIN",
   "CLOUD_STORE_DRIVER",
@@ -45,6 +46,7 @@ function restoreEnv() {
 }
 
 function clearProdRelated() {
+  delete process.env.RUNTIME_PROFILE;
   delete process.env.AUTH_SECRET;
   delete process.env.AUTH_ALLOW_DEV_LOGIN;
   delete process.env.CLOUD_STORE_DRIVER;
@@ -76,6 +78,31 @@ describe("validateProductionConfig（T302）", () => {
     env.NODE_ENV = "development";
     clearProdRelated();
     expect(() => validateProductionConfig()).not.toThrow();
+  });
+
+  // standalone 入口 server.js 无条件把 NODE_ENV 写成 production，因此
+  // 「是否生产」只能由显式标记决定，否则本地 compose 栈会被当成生产部署。
+  it("RUNTIME_PROFILE=development 覆盖被入口改写的 NODE_ENV", () => {
+    snapshotEnv();
+    clearProdRelated();
+    env.NODE_ENV = "production";
+    env.RUNTIME_PROFILE = "development";
+    expect(() => validateProductionConfig()).not.toThrow();
+  });
+
+  it("未声明 RUNTIME_PROFILE 时回落到 NODE_ENV 判定", () => {
+    snapshotEnv();
+    clearProdRelated();
+    env.NODE_ENV = "production";
+    expect(() => validateProductionConfig()).toThrow(/AUTH_SECRET/);
+  });
+
+  it("谎报 NODE_ENV=development 不能绕过 production 档位校验", () => {
+    snapshotEnv();
+    clearProdRelated();
+    env.NODE_ENV = "development";
+    env.RUNTIME_PROFILE = "production";
+    expect(() => validateProductionConfig()).toThrow(/AUTH_SECRET/);
   });
 
   it("生产缺 AUTH_SECRET 抛错", () => {

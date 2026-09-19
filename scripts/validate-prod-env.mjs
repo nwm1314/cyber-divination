@@ -9,7 +9,11 @@
  * 逻辑与 src/lib/config/validate-prod.ts 对齐（纯 Node，无 TS 路径别名）。
  */
 
+/** 与 src/lib/config/validate-prod.ts 的 isProduction 对齐：显式标记优先于 NODE_ENV，
+ *  因为 standalone 的 server.js 会无条件把 NODE_ENV 写成 production。 */
 function isProduction() {
+  const profile = (process.env.RUNTIME_PROFILE ?? "").trim().toLowerCase();
+  if (profile) return profile === "production";
   return process.env.NODE_ENV === "production";
 }
 

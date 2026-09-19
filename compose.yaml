@@ -15,6 +15,9 @@ services:
     environment:
       # Local Compose uses the development validation profile so memory-based
       # rate limiting remains available without pretending to be production.
+      # NODE_ENV alone cannot express that: the standalone entrypoint rewrites it
+      # to production on boot, so the profile has to be declared explicitly.
+      RUNTIME_PROFILE: ${RUNTIME_PROFILE:-development}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
       HOSTNAME: 0.0.0.0

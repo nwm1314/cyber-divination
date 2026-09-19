@@ -15,6 +15,7 @@ RUN npm run build
 FROM node:20.19.4-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
+    RUNTIME_PROFILE=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
