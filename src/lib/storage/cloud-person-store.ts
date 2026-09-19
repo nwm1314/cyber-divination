@@ -15,6 +15,7 @@ import {
   pgListCloudPeople,
   pgUpsertCloudPerson,
 } from "./pg-person-store";
+import { assertVersionWritable } from "./version-guard";
 
 function isPostgresDriver(): boolean {
   return getCloudStoreDriver() === "postgres";
@@ -104,12 +105,21 @@ export async function getCloudPerson(
 export async function upsertCloudPerson(
   userId: UserId,
   input: PersonInput,
+  options?: { expectedVersion?: number },
 ): Promise<Person> {
-  if (isPostgresDriver()) return pgUpsertCloudPerson(userId, input);
+  if (isPostgresDriver()) {
+    return pgUpsertCloudPerson(userId, input, options);
+  }
   await ensureLoaded();
   const id = input.id?.trim() || newPersonId();
   const existing = memory!.users[userId]?.[id];
   const ts = nowIso();
+  const version = assertVersionWritable({
+    resource: "person",
+    resourceId: id,
+    storedVersion: existing?.version,
+    expectedVersion: options?.expectedVersion,
+  });
   const person = normalize(
     {
       ...input,
@@ -118,6 +128,7 @@ export async function upsertCloudPerson(
       ziweiIds: input.ziweiIds ?? existing?.ziweiIds ?? [],
       createdAt: existing?.createdAt ?? ts,
       updatedAt: ts,
+      version,
     },
     userId,
   );

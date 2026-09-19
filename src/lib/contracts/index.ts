@@ -31,12 +31,14 @@ export {
   cloudLiuyaoUpsertSchema,
   migrateBodySchema,
   personInputSchema,
+  personUpsertRequestSchema,
   assertChartProfileConsistency,
   type BaziChartMin,
   type BaziAuthorityInput,
   type BaziBirthProfileInput,
   type BirthProfileMin,
   type CloudChartUpsertInput,
+  type PersonUpsertRequest,
 } from "./charts";
 
 export {

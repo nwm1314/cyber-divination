@@ -66,6 +66,24 @@ DDL：`src/lib/db/schema.ts` / `src/lib/db/migrate.sql`。
 **生产**：启动应用前执行 `npm run db:migrate`（幂等 `CREATE IF NOT EXISTS`），并**必须**设 `DB_SKIP_ENSURE_SCHEMA=1`。请求路径建表要求应用 DB 角色具备 `CREATE` 权限，且多实例冷启动会并发执行同一份 `SCHEMA_SQL`（`schemaReady` 只在单进程内去重）。  
 开发：无 `DATABASE_URL` 时回落 `data/*.json`；有库时请求路径仍可 `ensureSchema()` 幂等建表。
 
+**乐观锁与并发写（B4）**：`people`、`bazi_charts` 两张可被反复改写的表带 `version` 列。
+`migrate.sql` 与 `SCHEMA_SQL` 都含幂等 `ALTER TABLE … ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0`，
+因此**旧库预跑 `npm run db:migrate` 即可收敛**，已有行落到 0，无需回填脚本。
+
+写接口的契约：
+
+| 请求 | 行为 |
+|------|------|
+| 带 `expectedVersion` 且等于库中版本 | 写入成功，`version` 自增 |
+| 带 `expectedVersion` 但落后 | **409** `STORAGE_VERSION_CONFLICT`（消息含期望/当前版本），**不覆盖已存数据** |
+| 不带 `expectedVersion` | 维持旧的「后写覆盖」语义（兼容尚未回传版本的客户端），`version` 仍自增 |
+
+PG 侧的比较与覆盖在同一条 `INSERT … ON CONFLICT … WHERE version = expected` 语句内完成，不依赖先读后写的时序。
+读接口（`GET /api/people`、`GET /api/charts` 的列表与详情）返回体已带 `version`，
+客户端要启用防覆盖只需把它作为 `expectedVersion` 回传。
+**当前状态**：服务端判定与 409 已生效并有测试（file 驱动）；本机 UI 尚未回传版本（本机存储未持久化 version），因此线上仍是盲写，接线为下一步（见 `docs/FIX_REPORT_ROUND3.md`）。
+`users` / `ziwei_charts` / `liuyao_charts` 本轮**未**加列——它们没有 expectedVersion 执行点，加了就是死 schema；接入时按同一模式补列即可。
+
 ### 2.4 API 限流（T210）
 
 | 变量 | 必填 | 默认 | 说明 |

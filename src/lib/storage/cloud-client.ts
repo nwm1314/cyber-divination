@@ -91,12 +91,17 @@ export async function fetchCloudChart(
 /** POST /api/charts — 保存/覆盖 */
 export async function upsertCloudChartApi(
   body: CloudChartUpsertBody,
+  options?: { expectedVersion?: number },
 ): Promise<CloudApiResult<{ record: CloudChartRecord }>> {
   const res = await fetch("/api/charts", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(
+      options?.expectedVersion === undefined
+        ? body
+        : { ...body, expectedVersion: options.expectedVersion },
+    ),
   });
   const parsed = await parseJson(res);
   if (!res.ok) {

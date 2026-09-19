@@ -7,6 +7,11 @@ import type { UserId } from "@/lib/types/user";
 import type { BirthProfile, BaziChart, ReadingReport } from "@/lib/types";
 import type { CalibrationData } from "@/lib/reading/calibrate";
 import { ensureSchema, getSql } from "@/lib/db";
+import {
+  assertVersionWritable,
+  normalizeVersion,
+  VersionConflictError,
+} from "./version-guard";
 import type {
   CloudChartListItem,
   CloudChartRecord,
@@ -21,6 +26,7 @@ function rowToRecord(row: {
   chart_json: unknown;
   report_json: unknown | null;
   calibrate_json: unknown | null;
+  version?: number;
   created_at: string | Date;
   updated_at: string | Date;
 }): CloudChartRecord {
@@ -31,6 +37,8 @@ function rowToRecord(row: {
     chart: row.chart_json as BaziChart,
     report: (row.report_json as ReadingReport | null) ?? null,
     calibration: (row.calibrate_json as CalibrationData | null) ?? null,
+    // 版本来自列（唯一真相），旧库缺列时按 0
+    version: normalizeVersion(row.version),
     createdAt:
       typeof row.created_at === "string"
         ? row.created_at
@@ -71,6 +79,7 @@ export async function pgGetCloudChart(
 export async function pgUpsertCloudChart(
   userId: UserId,
   body: CloudChartUpsertBody,
+  options?: { expectedVersion?: number },
 ): Promise<CloudChartRecord> {
   await ensureSchema();
   const profileId = body.profile?.id ?? body.chart?.profileId;
@@ -83,6 +92,13 @@ export async function pgUpsertCloudChart(
 
   const existing = await pgGetCloudChart(userId, profileId);
   const now = new Date().toISOString();
+  const expected = options?.expectedVersion;
+  const version = assertVersionWritable({
+    resource: "chart",
+    resourceId: profileId,
+    storedVersion: existing?.version,
+    expectedVersion: expected,
+  });
   const profile = { ...body.profile, id: profileId, userId };
   const chart = { ...body.chart, profileId };
 
@@ -97,9 +113,12 @@ export async function pgUpsertCloudChart(
 
   const createdAt = existing?.createdAt ?? now;
   const sql = getSql();
-  await sql`
+
+  // 带 expectedVersion 时加 WHERE，让「比较 + 覆盖」在一条语句内原子完成；
+  // 不带时保持旧的后写覆盖行为。两条分支都 RETURNING，供调用方判断是否真的写入。
+  const written = await sql`
     INSERT INTO bazi_charts (
-      id, user_id, profile_json, chart_json, report_json, calibrate_json, created_at, updated_at
+      id, user_id, profile_json, chart_json, report_json, calibrate_json, version, created_at, updated_at
     ) VALUES (
       ${profileId},
       ${userId},
@@ -107,6 +126,7 @@ export async function pgUpsertCloudChart(
       ${sql.json(chart as never)},
       ${report == null ? null : sql.json(report as never)},
       ${calibration == null ? null : sql.json(calibration as never)},
+      ${version},
       ${createdAt},
       ${now}
     )
@@ -116,8 +136,24 @@ export async function pgUpsertCloudChart(
       chart_json = EXCLUDED.chart_json,
       report_json = EXCLUDED.report_json,
       calibrate_json = EXCLUDED.calibrate_json,
+      version = bazi_charts.version + 1,
       updated_at = EXCLUDED.updated_at
+    ${
+      expected === undefined
+        ? sql``
+        : sql`WHERE bazi_charts.version = ${expected}`
+    }
+    RETURNING id
   `;
+  if (expected !== undefined && written.length === 0) {
+    const current = await pgGetCloudChart(userId, profileId);
+    throw new VersionConflictError(
+      "chart",
+      profileId,
+      expected,
+      normalizeVersion(current?.version),
+    );
+  }
 
   return {
     id: profileId,
@@ -126,6 +162,7 @@ export async function pgUpsertCloudChart(
     chart,
     report,
     calibration,
+    version,
     createdAt,
     updatedAt: now,
   };

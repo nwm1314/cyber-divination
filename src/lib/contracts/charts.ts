@@ -125,6 +125,8 @@ export const cloudChartUpsertSchema = z.object({
   chart: baziChartMinSchema.passthrough(),
   report: z.unknown().optional().nullable(),
   calibration: z.unknown().optional().nullable(),
+  /** 乐观锁版本（B4）；缺省=兼容旧客户端的后写覆盖 */
+  expectedVersion: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 }).superRefine((data, ctx) => {
   if (data.chart.profileId !== data.profile.id) {
     ctx.addIssue({
@@ -245,6 +247,19 @@ export const personInputSchema = z.object({
   chartIds: z.array(z.string().max(128)).max(100).optional(),
   ziweiIds: z.array(z.string().max(128)).max(100).optional(),
 });
+
+/**
+ * POST/PUT /api/people 请求体：PersonInput + 可选乐观锁版本（B4）。
+ *
+ * `expectedVersion` 只用于并发校验，不进 payload；缺省时维持原「后写覆盖」行为，
+ * 以便旧客户端与新服务端共存。记录自身的 `version` 字段一律由服务端计算，
+ * 客户端传值不采信。
+ */
+export const personUpsertRequestSchema = personInputSchema.extend({
+  expectedVersion: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+});
+
+export type PersonUpsertRequest = z.infer<typeof personUpsertRequestSchema>;
 
 /**
  * 校验 chart.profileId 与 profile.id 一致；拒绝客户端伪造的 userId 语义。

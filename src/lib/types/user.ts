@@ -66,6 +66,11 @@ export type Person = {
    * 一人可多份紫微盘
    */
   ziweiIds?: string[];
+  /**
+   * 云端乐观锁版本（B4）。缺省/旧数据按 0 处理；
+   * 写云端时可带回作为 expectedVersion，版本落后即返回 409 而不是静默覆盖。
+   */
+  version?: number;
   /** ISO 8601 */
   createdAt?: string;
   updatedAt?: string;

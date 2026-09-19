@@ -8,11 +8,11 @@ import {
   upsertCloudPerson,
   personBelongsToUser,
 } from "@/lib/storage/cloud-person-store";
-import { assertSameOrigin, parseJsonBody } from "@/lib/api";
+import { assertSameOrigin, parseJsonBody, versionConflictResponse } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
-import { personInputSchema } from "@/lib/contracts";
+import { personUpsertRequestSchema } from "@/lib/contracts";
 
 function unauthorized() {
   return NextResponse.json(
@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const parsed = await parseJsonBody(request, personInputSchema);
+  const parsed = await parseJsonBody(request, personUpsertRequestSchema);
   if (!parsed.ok) {
     return NextResponse.json(
       {
@@ -132,14 +132,21 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     );
   }
 
+  const { expectedVersion, ...personInput } = parsed.data;
   try {
-    const person = await upsertCloudPerson(session.userId, {
-      ...parsed.data,
-      id,
-      name: parsed.data.name.trim(),
-    });
+    const person = await upsertCloudPerson(
+      session.userId,
+      {
+        ...personInput,
+        id,
+        name: personInput.name.trim(),
+      },
+      { expectedVersion },
+    );
     return NextResponse.json({ person });
   } catch (e) {
+    const conflict = versionConflictResponse(e);
+    if (conflict) return conflict;
     const message = toSafeErrorMessage(e, MESSAGES.saveFailed, (original) =>
       logApi("error", "people.update.error", { route: "api.people.update", requestId: crypto.randomUUID(), message: original }),
     );

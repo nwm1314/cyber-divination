@@ -14,6 +14,7 @@ export {
   type ParseBodyErr,
 } from "@/lib/api/parse-body";
 export { assertSameOrigin } from "@/lib/api/origin";
+export { versionConflictResponse } from "@/lib/api/version-conflict";
 export {
   checkRateLimit,
   clientKeyFromRequest,

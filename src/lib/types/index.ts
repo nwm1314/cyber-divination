@@ -458,6 +458,8 @@ export const ErrorCode = {
   AUTH_USER_NOT_FOUND: "AUTH_USER_NOT_FOUND",
   /** 匿名数据合并冲突等 */
   AUTH_MERGE_CONFLICT: "AUTH_MERGE_CONFLICT",
+  /** 乐观锁版本落后：其他设备已先写入（B4），需刷新后重试而非直接覆盖 */
+  STORAGE_VERSION_CONFLICT: "STORAGE_VERSION_CONFLICT",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

@@ -34,6 +34,10 @@ export type CloudChartRecord = {
   chart: BaziChart;
   report?: ReadingReport | null;
   calibration?: CalibrationData | null;
+  /**
+   * 乐观锁版本（B4）。旧行/旧快照缺省时按 0 处理。
+   */
+  version?: number;
   /** ISO 8601 */
   createdAt: string;
   /** ISO 8601 */
@@ -46,6 +50,8 @@ export type CloudChartListItem = {
   name: string;
   date: string;
   updatedAt: string;
+  /** 乐观锁版本（B4）；列表也带版本，客户端无需先取详情才能回传 */
+  version?: number;
 };
 
 /** POST /api/charts 请求体 */
@@ -69,5 +75,6 @@ export function toListItem(rec: CloudChartRecord): CloudChartListItem {
     name: rec.profile.name,
     date: rec.profile.analysisBaseDate,
     updatedAt: rec.updatedAt,
+    version: rec.version ?? 0,
   };
 }

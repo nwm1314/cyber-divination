@@ -7,11 +7,11 @@ import {
   upsertCloudPerson,
 } from "@/lib/storage/cloud-person-store";
 import type { PersonInput } from "@/lib/types/user";
-import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { parseJsonBody, assertSameOrigin, versionConflictResponse } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
-import { personInputSchema } from "@/lib/contracts";
+import { personUpsertRequestSchema } from "@/lib/contracts";
 
 function unauthorized() {
   return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     return unauthorized();
   }
 
-  const parsed = await parseJsonBody(request, personInputSchema);
+  const parsed = await parseJsonBody(request, personUpsertRequestSchema);
   if (!parsed.ok) {
     return NextResponse.json(
       {
@@ -77,15 +77,20 @@ export async function POST(request: NextRequest) {
   }
 
   // 服务端权威：强制 userId = session
+  const { expectedVersion, ...personInput } = parsed.data;
   const body: PersonInput = {
-    ...parsed.data,
+    ...personInput,
     userId: session.userId,
   };
 
   try {
-    const person = await upsertCloudPerson(session.userId, body);
+    const person = await upsertCloudPerson(session.userId, body, {
+      expectedVersion,
+    });
     return NextResponse.json({ person });
   } catch (e) {
+    const conflict = versionConflictResponse(e);
+    if (conflict) return conflict;
     const message = toSafeErrorMessage(
       e,
       MESSAGES.saveFailed,

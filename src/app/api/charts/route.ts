@@ -7,7 +7,7 @@ import {
   upsertCloudChart,
 } from "@/lib/storage/cloud-store";
 import type { CloudChartUpsertBody } from "@/lib/storage/cloud-types";
-import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import { parseJsonBody, assertSameOrigin, versionConflictResponse } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
@@ -108,9 +108,13 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const record = await upsertCloudChart(session.userId, body);
+    const record = await upsertCloudChart(session.userId, body, {
+      expectedVersion: parsed.data.expectedVersion,
+    });
     return NextResponse.json({ record });
   } catch (e) {
+    const conflict = versionConflictResponse(e);
+    if (conflict) return conflict;
     const message = toSafeErrorMessage(e, MESSAGES.saveFailedRetry, (original) =>
       logApi("error", "charts.save.error", { route: "api.charts.save", requestId: crypto.randomUUID(), message: original }),
     );

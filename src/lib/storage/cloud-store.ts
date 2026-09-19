@@ -18,6 +18,7 @@ import type {
 } from "./cloud-types";
 import { toListItem } from "./cloud-types";
 import { getCloudStoreDriver } from "./driver";
+import { assertVersionWritable } from "./version-guard";
 import {
   pgDeleteAllCloudChartsForUser,
   pgDeleteCloudChart,
@@ -156,10 +157,11 @@ function prepareAuthoritativeUpsert(
 export async function upsertCloudChart(
   userId: UserId,
   body: CloudChartUpsertBody,
+  options?: { expectedVersion?: number },
 ): Promise<CloudChartRecord> {
   const authoritativeBody = prepareAuthoritativeUpsert(body);
   if (isPostgresDriver()) {
-    return pgUpsertCloudChart(userId, authoritativeBody);
+    return pgUpsertCloudChart(userId, authoritativeBody, options);
   }
   await ensureLoaded();
   const profileId = authoritativeBody.profile.id;
@@ -195,6 +197,12 @@ export async function upsertCloudChart(
     chart,
     report,
     calibration,
+    version: assertVersionWritable({
+      resource: "chart",
+      resourceId: profileId,
+      storedVersion: existing?.version,
+      expectedVersion: options?.expectedVersion,
+    }),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };

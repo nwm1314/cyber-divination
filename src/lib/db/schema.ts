@@ -41,6 +41,8 @@ export type PgPersonRow = {
   id: string;
   user_id: UserId;
   payload: unknown;
+  /** 乐观锁版本（B4）；迁移前旧行为 0 */
+  version: number;
   created_at: string;
   updated_at: string;
 };
@@ -52,6 +54,8 @@ export type PgBaziChartRow = {
   chart_json: unknown;
   report_json: unknown | null;
   calibrate_json: unknown | null;
+  /** 乐观锁版本（B4）；迁移前旧行为 0 */
+  version: number;
   created_at: string;
   updated_at: string;
 };
@@ -120,6 +124,7 @@ CREATE TABLE IF NOT EXISTS people (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   payload       JSONB NOT NULL,
+  version       INTEGER NOT NULL DEFAULT 0,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -132,6 +137,7 @@ CREATE TABLE IF NOT EXISTS bazi_charts (
   chart_json      JSONB NOT NULL,
   report_json     JSONB,
   calibrate_json  JSONB,
+  version         INTEGER NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -156,4 +162,10 @@ CREATE TABLE IF NOT EXISTS liuyao_charts (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS liuyao_charts_user_id_idx ON liuyao_charts(user_id);
+
+-- 乐观锁列补齐（B4）：CREATE TABLE IF NOT EXISTS 不会给已存在的旧表加列，
+-- 因此老库必须靠这两条幂等 ALTER 收敛。已有行取默认 0，旧客户端不带
+-- expectedVersion 时仍按后写覆盖，行为不变。
+ALTER TABLE people      ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE bazi_charts ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 `.trim();

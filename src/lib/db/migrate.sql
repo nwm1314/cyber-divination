@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS people (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   payload       JSONB NOT NULL,
+  version       INTEGER NOT NULL DEFAULT 0,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS bazi_charts (
   chart_json      JSONB NOT NULL,
   report_json     JSONB,
   calibrate_json  JSONB,
+  version         INTEGER NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -64,3 +66,8 @@ CREATE TABLE IF NOT EXISTS liuyao_charts (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS liuyao_charts_user_id_idx ON liuyao_charts(user_id);
+
+-- 乐观锁列（B4）：已存在的旧表不会被 CREATE TABLE IF NOT EXISTS 改动，
+-- 用幂等 ALTER 收敛；已有行 version 落到 0。
+ALTER TABLE people      ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE bazi_charts ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
