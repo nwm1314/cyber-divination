@@ -12,7 +12,7 @@ import {
   pushLocalZiweiToCloud,
   deleteArchive,
 } from "@/lib/storage/sync";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
 import { ARCHIVES } from "@/content/zh";
 
 const emptySubscribe = () => () => {};
@@ -149,14 +149,15 @@ export default function ZiweiListPage() {
             <p className="text-sm text-muted">正在读取本机紫微盘…</p>
           </Card>
         ) : list.length === 0 ? (
-          <Card title="暂无紫微盘" subtitle="排盘结果会保存在本机浏览器">
-            <p className="text-sm text-muted mb-4 leading-relaxed">
-              完成一次紫微排盘后即可在此查看历史命盘。
-            </p>
+          <EmptyState
+            title="暂无紫微盘"
+            subtitle="排盘结果会保存在本机浏览器"
+            hint="完成一次紫微排盘后即可在此查看历史命盘。"
+          >
             <Link href="/ziwei/new">
               <Button>去排紫微盘</Button>
             </Link>
-          </Card>
+          </EmptyState>
         ) : (
           <ul className="space-y-3">
             {list.map((item) => (

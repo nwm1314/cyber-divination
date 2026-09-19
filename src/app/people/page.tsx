@@ -14,7 +14,7 @@ import {
   listPersonEntries,
 } from "@/lib/storage";
 import type { PersonListEntry } from "@/lib/types/user";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
 
 const emptySubscribe = () => () => {};
 
@@ -198,11 +198,11 @@ export default function PeoplePage() {
               <p className="text-sm text-muted">正在读取本机人物…</p>
             </Card>
           ) : list.length === 0 ? (
-            <Card title="暂无人物" subtitle="先建档案，再关联八字 / 紫微盘">
-              <p className="text-sm text-muted leading-relaxed">
-                创建人物后，可在详情页挂载已有命盘，或跳转新建八字 / 紫微。
-              </p>
-            </Card>
+            <EmptyState
+              title="暂无人物"
+              subtitle="先建档案，再关联八字 / 紫微盘"
+              hint="创建人物后，可在详情页挂载已有命盘，或跳转新建八字 / 紫微。"
+            />
           ) : (
             <ul className="space-y-3">
               {list.map((item) => (

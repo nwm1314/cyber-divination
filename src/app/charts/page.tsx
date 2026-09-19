@@ -22,7 +22,7 @@ import {
   shouldShowMigratePrompt,
   skipMigratePrompt,
 } from "@/lib/storage/migrate";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
 import { GuestBanner } from "@/components/GuestBanner";
 import type { AppSession } from "@/lib/types/user";
 
@@ -307,17 +307,22 @@ export default function ChartsPage() {
               <p className="text-sm text-muted">正在读取本机档案…</p>
             </Card>
           ) : list.length === 0 ? (
-            <Card title="暂无八字档案" subtitle="排盘结果会保存在本机浏览器">
-              <p className="text-sm text-muted mb-4 leading-relaxed">
-                完成引导采集后即可在此查看历史命盘。
-                {loggedIn
-                  ? " 已登录可从上方「从云端拉取」恢复跨设备档案。"
-                  : ""}
-              </p>
+            <EmptyState
+              title="暂无八字档案"
+              subtitle="排盘结果会保存在本机浏览器"
+              hint={
+                <>
+                  完成引导采集后即可在此查看历史命盘。
+                  {loggedIn
+                    ? " 已登录可从上方「从云端拉取」恢复跨设备档案。"
+                    : ""}
+                </>
+              }
+            >
               <Link href="/chart/new">
                 <Button>开始排盘</Button>
               </Link>
-            </Card>
+            </EmptyState>
           ) : (
             <ul className="space-y-3">
               {list.map((item) => (
@@ -386,14 +391,15 @@ export default function ChartsPage() {
               </Link>
             </div>
             {ziweiList.length === 0 ? (
-              <Card title="暂无紫微盘" subtitle="本地存储，刷新不丢">
-                <p className="text-sm text-muted mb-4 leading-relaxed">
-              紫微盘与八字档案分开保存；登录后可手动推送/拉取云端。删除本页档案只删除本机；云端删除请在对应云端生命周期操作中明确选择。
-                </p>
+              <EmptyState
+                title="暂无紫微盘"
+                subtitle="本地存储，刷新不丢"
+                hint="紫微盘与八字档案分开保存；登录后可手动推送/拉取云端。删除本页档案只删除本机；云端删除请在对应云端生命周期操作中明确选择。"
+              >
                 <Link href="/ziwei/new">
                   <Button size="sm">排紫微盘</Button>
                 </Link>
-              </Card>
+              </EmptyState>
             ) : (
               <ul className="space-y-3">
                 {ziweiList.slice(0, 5).map((item) => (

@@ -8,7 +8,7 @@ import {
   type LiuyaoListEntry,
 } from "@/lib/storage";
 import type { LiuyaoMethod } from "@/lib/types/liuyao";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
 import { ARCHIVES } from "@/content/zh";
 import { deleteArchive } from "@/lib/storage/sync";
 
@@ -147,14 +147,15 @@ export default function LiuyaoHistoryPage() {
             <p className="text-sm text-muted">正在读取本机问卦…</p>
           </Card>
         ) : list.length === 0 ? (
-          <Card title="暂无问卦" subtitle="起卦结果会保存在本机浏览器">
-            <p className="text-sm text-muted mb-4 leading-relaxed">
-              完成一次起卦后即可在此查看历史卦象与所问事项。
-            </p>
+          <EmptyState
+            title="暂无问卦"
+            subtitle="起卦结果会保存在本机浏览器"
+            hint="完成一次起卦后即可在此查看历史卦象与所问事项。"
+          >
             <Link href="/liuyao/new">
               <Button>去起卦</Button>
             </Link>
-          </Card>
+          </EmptyState>
         ) : (
           <ul className="space-y-3">
             {list.map((item) => (
