@@ -34,6 +34,6 @@ export const LIUYAO_DATA_SOURCES = {
   excluded: "不采用恐吓、诅咒、绝对化断语；不替代专业决策",
   /** 引擎版本标记（与装卦 meta 可对齐） */
   dataVersion: "liuyao-data-1.1.0",
-  /** 规则集版本（T282） */
-  ruleSetVersion: "liuyao-rules-w26-0.5.0",
+  /** 规则集版本（T282；w26-0.6.0 起含进退神/空破冲合 · GAP-3） */
+  ruleSetVersion: "liuyao-rules-w26-0.6.0",
 } as const;

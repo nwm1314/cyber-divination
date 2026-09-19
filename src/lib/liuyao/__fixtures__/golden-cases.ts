@@ -14,9 +14,11 @@ export const LIUYAO_GOLDEN_META = {
   school: "jingfang-najia-learning-v1",
   dataVersion: LIUYAO_DATA_SOURCES.dataVersion,
   ruleSetVersion: LIUYAO_DATA_SOURCES.ruleSetVersion,
-  engineMinVersion: "0.5.0",
+  engineMinVersion: "0.6.0",
   notes:
-    "手工六爻金标准；世应/八宫/用神关键词表驱动；非外部商业软件逐盘抄录",
+    "手工六爻金标准；世应/八宫/用神关键词表驱动；非外部商业软件逐盘抄录。" +
+    "0.6.0（GAP-3）起动变含进退神/化冲化合/化空化破，口径见 " +
+    "docs/ENGINE_RULE_LIUYAO_DONGBIAN.md。",
   references: [
     "docs/research/liuyao-sources.md",
     "src/lib/liuyao/analyze/palaces.ts",

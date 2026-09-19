@@ -46,6 +46,12 @@ function binaryOf(hex: (typeof HEXAGRAMS)[number]): number[] {
 
 const CAST_AT = "2026-07-20T12:00";
 
+/**
+ * 穷举 4096 组合需数秒，且在全量测试并行负载下会超过 vitest 默认
+ * 的 5s 单测超时。这里显式放大超时，避免成为"负载敏感"的假失败。
+ */
+const EXHAUSTIVE_TIMEOUT_MS = 60_000;
+
 describe("变卦穷举 · 4096 组合全量覆盖", () => {
   it("64 本卦数据齐全且阴阳位可解析", () => {
     expect(HEXAGRAMS).toHaveLength(64);
@@ -55,7 +61,9 @@ describe("变卦穷举 · 4096 组合全量覆盖", () => {
     }
   });
 
-  it("4096 组合全部可装卦，无异常、无缺失", () => {
+  it(
+    "4096 组合全部可装卦，无异常、无缺失",
+    () => {
     let total = 0;
     let withChanging = 0;
     let withoutChanging = 0;
@@ -113,7 +121,9 @@ describe("变卦穷举 · 4096 组合全量覆盖", () => {
     expect(bianGuaNames.size).toBe(64); // 变卦映射满射到 64 卦
     expect(withChanging).toBe(64 * 63); // 除 mask=0 外都有动爻
     expect(withoutChanging).toBe(64); // 每本卦恰有 1 个静卦
-  });
+    },
+    EXHAUSTIVE_TIMEOUT_MS,
+  );
 
   it("全零掩码（静卦）不产生变卦与动变条目", () => {
     for (const ben of HEXAGRAMS) {
@@ -171,37 +181,53 @@ describe("变卦穷举 · 4096 组合全量覆盖", () => {
     }
   });
 
-  it("动变分析对全部 4096 组均产出结构合法的条目", () => {
-    const validRelations = new Set([
-      "比和",
-      "动生化",
-      "动克化",
-      "化生动",
-      "化克动",
-    ]);
-    const validHuitou = new Set(["回头生", "回头克", "无"]);
+  it(
+    "动变分析对全部 4096 组均产出结构合法的条目",
+    () => {
+      const validRelations = new Set([
+        "比和",
+        "动生化",
+        "动克化",
+        "化生动",
+        "化克动",
+      ]);
+      const validHuitou = new Set(["回头生", "回头克", "无"]);
+      const validJintui = new Set(["进神", "退神", "无"]);
+      const validChongHe = new Set(["化冲", "化合", "无"]);
 
-    for (const ben of HEXAGRAMS) {
-      const binary = binaryOf(ben);
-      for (let mask = 0; mask < 64; mask++) {
-        const chart = castLiuyao({
-          question: "结构",
-          method: "manual",
-          lines: valuesFor(binary, mask),
-          castAt: CAST_AT,
-        });
-        for (const item of analyzeDongBian(chart)) {
-          expect(validRelations.has(item.relation)).toBe(true);
-          expect(validHuitou.has(item.huitou)).toBe(true);
-          expect(item.fromLiuqin).toBeTruthy();
-          expect(item.toLiuqin).toBeTruthy();
-          expect(item.fromWuxing).toBeTruthy();
-          expect(item.toWuxing).toBeTruthy();
-          expect(item.summary).toBeTruthy();
-          expect(item.yao).toBeGreaterThanOrEqual(1);
-          expect(item.yao).toBeLessThanOrEqual(6);
+      for (const ben of HEXAGRAMS) {
+        const binary = binaryOf(ben);
+        for (let mask = 0; mask < 64; mask++) {
+          const chart = castLiuyao({
+            question: "结构",
+            method: "manual",
+            lines: valuesFor(binary, mask),
+            castAt: CAST_AT,
+          });
+          for (const item of analyzeDongBian(chart)) {
+            expect(validRelations.has(item.relation)).toBe(true);
+            expect(validHuitou.has(item.huitou)).toBe(true);
+            // GAP-3 新增字段也必须落在枚举内
+            expect(validJintui.has(item.jintui)).toBe(true);
+            expect(validChongHe.has(item.chongHe)).toBe(true);
+            expect(item.fromBranch).toBeTruthy();
+            expect(item.toBranch).toBeTruthy();
+            // 有占时 → 空破已计算（布尔）
+            expect(typeof item.benKong).toBe("boolean");
+            expect(typeof item.huaKong).toBe("boolean");
+            expect(typeof item.benPo).toBe("boolean");
+            expect(typeof item.huaPo).toBe("boolean");
+            expect(item.fromLiuqin).toBeTruthy();
+            expect(item.toLiuqin).toBeTruthy();
+            expect(item.fromWuxing).toBeTruthy();
+            expect(item.toWuxing).toBeTruthy();
+            expect(item.summary).toBeTruthy();
+            expect(item.yao).toBeGreaterThanOrEqual(1);
+            expect(item.yao).toBeLessThanOrEqual(6);
+          }
         }
       }
-    }
-  });
+    },
+    EXHAUSTIVE_TIMEOUT_MS,
+  );
 });

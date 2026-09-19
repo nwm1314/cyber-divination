@@ -9,7 +9,7 @@ import {
   resolveCastTimeContext,
   resolveYingQi,
 } from "./yingqi";
-import { castLiuyao } from "../cast";
+import { castLiuyao, LIUYAO_ENGINE_VERSION } from "../cast";
 
 describe("旬空表（T180）", () => {
   it("六旬空亡完整", () => {
@@ -42,7 +42,9 @@ describe("占时 + 应期入盘（T180）", () => {
       castAt: "2024-06-15T10:00",
       id: "ly_t180_1",
     });
-    expect(chart.meta.engineVersion).toBe("0.5.0");
+    // 不硬编码版本号：改为断言与引擎常量一致，
+    // 避免每次规则升级都要改本测试（本次 GAP-3 即触发）。
+    expect(chart.meta.engineVersion).toBe(LIUYAO_ENGINE_VERSION);
     expect(chart.meta.castingSchool).toBe("najia-manual");
     expect(chart.castAt).toBe("2024-06-15T10:00");
     expect(chart.dayGanZhi).toMatch(/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/);

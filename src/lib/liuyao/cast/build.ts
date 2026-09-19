@@ -22,10 +22,14 @@ import {
 import { LIUYAO_DATA_SOURCES } from "../data/sources";
 import { computeInputFingerprint } from "@/lib/engine-envelope/fingerprint";
 
-export const LIUYAO_ENGINE_VERSION = "0.5.0";
+export const LIUYAO_ENGINE_VERSION = "0.6.0";
 
-/** 数据结构版本（统一引擎信封 · GAP-4） */
-export const LIUYAO_SCHEMA_VERSION = "liuyao-schema-1.0.0";
+/**
+ * 数据结构版本（统一引擎信封 · GAP-4）
+ *
+ * 1.1.0（GAP-3）：DongBianItem 增加 jintui/chongHe/空破 字段。
+ */
+export const LIUYAO_SCHEMA_VERSION = "liuyao-schema-1.1.0";
 
 export type BuildChartParams = {
   question: string;
