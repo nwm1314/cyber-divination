@@ -44,7 +44,11 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
           env: {
-            AUTH_SECRET: "e2e-only-secret",
+            // CI 下 command 为 `node .next/standalone/server.js`，NODE_ENV
+            // 默认 production → instrumentation 会执行 validateProductionConfig()
+            // 并 fail-fast。占位值必须满足全部生产规则，否则服务准备阶段就抛错、
+            // /api/health 返回 500，webServer 超时导致 24 例全部失败。
+            AUTH_SECRET: "Zx9pQ2mVt7Lk4Rw8Bn3Hy6Jd1Fg5Cs0Ae2Uo9Pi4Xz7Vb3Nq8Mt5Ky",
             AUTH_ALLOW_DEV_LOGIN: "0",
             NEXT_TELEMETRY_DISABLED: "1",
             PORT: String(port),
@@ -52,8 +56,12 @@ export default defineConfig({
             // Production checks use disposable placeholders in the isolated E2E server.
             DATABASE_URL: "postgres://e2e:e2e@127.0.0.1:5432/e2e",
             CLOUD_STORE_DRIVER: "postgres",
+            // 等价于「部署前预跑 DDL」：e2e 无真实库，禁止请求路径执行建表
+            DB_SKIP_ENSURE_SCHEMA: "1",
+            SHARE_STORE_DRIVER: "upstash",
             RATE_LIMIT_DRIVER: "redis",
             RATE_LIMIT_TRUSTED_PROXY: "0",
+            // 指向保留 .invalid TLD，验证依赖不可用时的降级路径
             UPSTASH_REDIS_REST_URL: "https://e2e.invalid",
             UPSTASH_REDIS_REST_TOKEN: "e2e-only-token",
           },
