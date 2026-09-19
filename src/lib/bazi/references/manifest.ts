@@ -4,35 +4,35 @@ export const BAZI_SKILL_PROVENANCE = {
   "source": "project-synced-skill",
   "sourceLicense": "MIT",
   "referenceManifestVersion": "1",
-  "referenceHash": "07552d25facd22555b00f60b75073e587959dcad2808667d00e342df081470eb",
+  "referenceHash": "3c48faf83055dff34e9f3d86777b387df40e30ffd804f7e3d987a8d82a84b72e",
   "files": [
     {
       "path": "LICENSE",
-      "sha256": "44040fe9b9918cd13978d272955960fbb30474a2d08eb210e0bd10a86ade1dfe"
+      "sha256": "28ce6f2a50b8e8aba67c0b3837152d7aa9389cd677ed34acc624a7aff81dacf4"
     },
     {
       "path": "README.md",
-      "sha256": "c537ead9b7c3f31bc5a84f9ffa27b2d417cc718e3c0c75c3fc15136ae2e6e4a4"
+      "sha256": "33a9f0d73a518b313f9c171ff61e5148510506b8b27c6117ad5e2f0ee45d6eb2"
     },
     {
       "path": "SKILL.md",
-      "sha256": "bd2e76d0778cae88666a335e339955e7cf179ef2a740353bb2556f8b0ddb9a68"
+      "sha256": "ee9f48acda7cd237b4d04789ea2815cf37a14849cd300b4ad529739928017386"
     },
     {
       "path": "references/wuxing-tables.md",
-      "sha256": "25648384e04666e7dd0a04efa9b7c124c3b457fa5071535d733313fe3e06dc9b"
+      "sha256": "167982bb7fd5ddc0f3dcfafe6ec377c92fa2d4bd90153b72c89d65888a7d419f"
     },
     {
       "path": "references/shichen-table.md",
-      "sha256": "f025ba17d2bdb38f0e282fe71329df51a37b96ee4eff14196c65def6f41dfbc6"
+      "sha256": "bcddb4c87d179d52ea15740c75edcfa2f99f89aef23bc5068fc88c87b4068768"
     },
     {
       "path": "references/dayun-rules.md",
-      "sha256": "0b2f4db41644beb425eaeec861e9b3e40b33aa4df52d9ccf971a0141fb49e69b"
+      "sha256": "70e35df806e7d6ede9e3ab6524bd2088d3ce9ac8a8e8d6177c84abe0e2b03562"
     },
     {
       "path": "references/classical-texts.md",
-      "sha256": "c6537104c245039607ecfabdcace787ddcb6ec20e7422933212498e38dea0a7a"
+      "sha256": "43094d2069567a37757fd6c6d8927c3936d446ba2f28378dd1a1387a9768026b"
     }
   ],
   "execution": "deterministic-project-engine"

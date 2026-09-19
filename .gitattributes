@@ -1,0 +1,4 @@
+# Keep every text file LF in the working tree. sync-bazi-skill.mjs hashes these
+# files and commits the digest, so the checkout must not depend on the platform.
+* text=auto eol=lf
+*.ico binary

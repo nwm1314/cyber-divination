@@ -48,8 +48,15 @@ npm run sync:skill
 \`\`\`
 `;
 
+// Hash the LF-normalized bytes so the provenance value describes the committed
+// blob, not the platform's working-tree spelling: with core.autocrlf=true a
+// Windows checkout is CRLF while the Linux runner checks out LF, and a raw-byte
+// hash there can only ever match one of the two.
 const sha256 = (file) =>
-  crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+  crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n"))
+    .digest("hex");
 
 const identityFiles = ["LICENSE", "README.md", "SKILL.md", ...FILES.map((f) => `references/${f}`)];
 const files = identityFiles.map((relativePath) => {
