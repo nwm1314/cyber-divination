@@ -90,7 +90,7 @@ describe("起运精确到月 · 不变量", () => {
     }
   });
 
-  it("每步的起运月数一致（10 年为整周期，余月继承首步）", (c) => {
+  it("每步的起运月数一致（10 年为整周期，余月继承首步）", () => {
     const r = run(CASES[0]);
     const formal = r.dayun.filter((s) => !s.isPreDayun);
     const firstMonths = formal[0].startAgeMonths ?? 0;

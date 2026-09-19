@@ -67,7 +67,7 @@ describe("POST /api/account/export · 加固", () => {
     // origin.ts 的既定策略：生产要求 Origin/Referer，开发放宽以兼容
     // curl 与测试工具。这里显式验证**生产**分支拒绝无 Origin 请求。
     const prev = process.env.NODE_ENV;
-    // @ts-expect-error 测试期覆盖只读的 NODE_ENV
+    // @ts-expect-error NODE_ENV 在 @types/node 中为只读，测试期需临时覆盖以验证生产分支
     process.env.NODE_ENV = "production";
     try {
       const res = await exportRoute.POST(
@@ -80,7 +80,7 @@ describe("POST /api/account/export · 加固", () => {
       );
       expect(res.status).toBe(403);
     } finally {
-      // @ts-expect-error 恢复
+      // @ts-expect-error 同上：恢复测试前的 NODE_ENV
       process.env.NODE_ENV = prev;
     }
   });
