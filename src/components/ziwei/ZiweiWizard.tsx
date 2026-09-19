@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Gender } from "@/lib/types";
+import type { Person } from "@/lib/types/user";
 import type { ZiweiChartInput } from "@/lib/types/ziwei";
 import { computeZiweiChart } from "@/lib/ziwei";
 import { lunarToSolarDate } from "@/lib/bazi/calendar";
-import { saveZiweiChart } from "@/lib/storage";
+import { linkZiweiId, listPersons, saveZiweiChart } from "@/lib/storage";
+import { PERSON_PREFILL } from "@/content/zh";
 import { Button, Card } from "@/components/ui";
 import {
   Field,
@@ -16,36 +18,26 @@ import {
   BirthTimeField,
   RegionSelect,
 } from "@/components/form";
+import {
+  emptyZiweiBirthDraftFields,
+  personOptionLabel,
+  personToZiweiDraftFields,
+  type ZiweiBirthDraftFields,
+} from "./person-prefill";
 
 const STEPS = ["姓名", "生日", "时辰", "性别地点", "确认"] as const;
 
-type Draft = {
-  name: string;
-  solarDate: string;
-  lunarDate: string;
-  isLeapMonth: boolean;
-  birthTime: string;
+type Draft = ZiweiBirthDraftFields & {
   shichenBranch: string;
-  shichenUnknown: boolean;
-  gender: Gender | "";
-  province: string;
-  city: string;
-  lng: string;
+  /** 复用人物档案时记录来源，排盘后回链到该档案 */
+  personId: string;
 };
 
 function emptyDraft(): Draft {
   return {
-    name: "",
-    solarDate: "",
-    lunarDate: "",
-    isLeapMonth: false,
-    birthTime: "",
+    ...emptyZiweiBirthDraftFields(),
     shichenBranch: "",
-    shichenUnknown: false,
-    gender: "",
-    province: "",
-    city: "",
-    lng: "",
+    personId: "",
   };
 }
 
@@ -103,6 +95,7 @@ function toInput(draft: Draft): ZiweiChartInput {
     gender: draft.gender as Gender,
     birthPlace: place,
     name: draft.name.trim() || undefined,
+    personId: draft.personId || undefined,
   };
 }
 
@@ -113,8 +106,36 @@ export function ZiweiWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [persons, setPersons] = useState<Person[]>([]);
+
+  /**
+   * 人物档案读自本机 KV（sessionStorage），只能在客户端取：SSR 与首帧渲染空列表，
+   * 因此不会有 hydration 不一致。放到异步回调里赋值是为了满足
+   * react-hooks/set-state-in-effect（effect 体内不得直接 setState）。
+   * 刻意用定时器而非 requestAnimationFrame：后台标签页不产帧，rAF 会一直不触发。
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => setPersons(listPersons()), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
+
+  const applyPerson = (personId: string) => {
+    if (!personId) {
+      setDraft((d) => ({ ...d, personId: "" }));
+      return;
+    }
+    const person = persons.find((p) => p.id === personId);
+    if (!person) return;
+    setDraft((d) => ({
+      ...d,
+      ...personToZiweiDraftFields(person),
+      // 档案不带时辰地支快捷选择，避免残留上一次的选择与 birthTime 冲突
+      shichenBranch: "",
+      personId,
+    }));
+  };
 
   const validate = (s: number): boolean => {
     const e: Record<string, string> = {};
@@ -191,6 +212,8 @@ export function ZiweiWizard() {
       const input = toInput(draft);
       const chart = computeZiweiChart(input);
       saveZiweiChart(chart, { solarDate: input.solarDate });
+      // 复用了人物档案：把新盘回链到该档案（一人可多份紫微盘）
+      if (draft.personId) linkZiweiId(draft.personId, chart.id);
       void import("@/lib/storage/mode").then(({ canUseCloudAndShare }) => {
         if (!canUseCloudAndShare()) return;
         void import("@/lib/storage/sync").then(({ pushOneZiwei }) =>
@@ -212,6 +235,25 @@ export function ZiweiWizard() {
       <Card glow={step === STEPS.length - 1 ? "cyan" : "none"}>
         {step === 0 && (
           <div className="space-y-4">
+            {persons.length > 0 && (
+              <Field
+                label={PERSON_PREFILL.fieldLabel}
+                hint={PERSON_PREFILL.fieldHint}
+              >
+                <select
+                  className={inputClass}
+                  value={draft.personId}
+                  onChange={(e) => applyPerson(e.target.value)}
+                >
+                  <option value="">{PERSON_PREFILL.manualOption}</option>
+                  {persons.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {personOptionLabel(p)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="姓名" required error={errors.name}>
               <input
                 className={inputClass}

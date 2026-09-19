@@ -114,3 +114,15 @@ export const ARCHIVES = {
   /** 通用返回无障碍标签 */
   backToArchives: "返回档案",
 } as const;
+
+/**
+ * 新建盘时「复用人物档案」文案（B15 / IA-6）。
+ *
+ * 紫微向导此前只能整表手填，已建档案里的生辰无法带入，
+ * 用户在同一台机器上会为同一个人重复输入相同字段。
+ */
+export const PERSON_PREFILL = {
+  fieldLabel: "从人物档案带入",
+  fieldHint: "选择已建档案可带入姓名与生辰，仍可逐项修改",
+  manualOption: "手动填写（不使用档案）",
+} as const;
