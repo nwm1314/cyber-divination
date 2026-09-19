@@ -14,6 +14,10 @@ import {
 } from "@/lib/api/rate-limit";
 import { resolveRequestId } from "@/lib/api/request-id";
 import { logApi } from "@/lib/api/logger";
+import {
+  SESSION_COOKIE_NAME,
+  createSessionToken,
+} from "@/lib/auth/session";
 
 /**
  * P1 回归：CRUD / 导出路由此前完全无限流。
@@ -138,6 +142,30 @@ describe("rate-limit config", () => {
 });
 
 describe("rate-limit identity", () => {
+  /**
+   * 本块会改写限流相关变量；原实现无清理，会把 RATE_LIMIT_TRUSTED_PROXY
+   * 泄漏给同文件后续 describe（顺序敏感的偶发失败）。此处统一快照/还原。
+   */
+  const MANAGED_ENV = [
+    "RATE_LIMIT_TRUSTED_PROXY",
+    "RATE_LIMIT_CRUD_MAX",
+    "RATE_LIMIT_CRUD_WINDOW_MS",
+  ] as const;
+  const savedIdentityEnv: Partial<
+    Record<(typeof MANAGED_ENV)[number], string | undefined>
+  > = {};
+  for (const key of MANAGED_ENV) savedIdentityEnv[key] = process.env[key];
+
+  afterEach(() => {
+    for (const key of MANAGED_ENV) {
+      const value = savedIdentityEnv[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    getMemoryRateLimiter().reset();
+    setRateLimiterForTests(null);
+  });
+
   it("直连模式忽略伪造的 forwarded headers", () => {
     delete process.env.RATE_LIMIT_TRUSTED_PROXY;
     const headers = new Headers({
@@ -175,6 +203,95 @@ describe("rate-limit identity", () => {
   it("拒绝未支持的代理模式配置", () => {
     process.env.RATE_LIMIT_TRUSTED_PROXY = "yes";
     expect(() => clientKeyFromRequest(new Headers())).toThrow(/RATE_LIMIT_TRUSTED_PROXY/);
+  });
+
+  /**
+   * B7：直连模式此前对所有请求返回常量 "anon" → 全站共享一个桶，
+   * 单个访客即可把所有人一起限死。现改为使用**服务端签发的会话**做身份：
+   * HMAC 不可伪造，因此不会给攻击者凭空造桶的能力。
+   */
+  const cookieOf = (token: string) =>
+    new Headers({ cookie: `${SESSION_COOKIE_NAME}=${token}` });
+
+  it("直连：已验签会话获得独立且稳定的桶键，且不泄露明文 userId", () => {
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+    const token = createSessionToken({
+      id: "usr_direct_a",
+      email: "direct-a@example.com",
+      displayName: "A",
+    });
+
+    const key = clientKeyFromRequest(cookieOf(token));
+    expect(key).toMatch(/^user:[0-9a-f]{16}$/);
+    expect(key).not.toContain("usr_direct_a");
+    expect(key).not.toContain("direct-a");
+    expect(clientKeyFromRequest(cookieOf(token))).toBe(key);
+  });
+
+  it("直连：不同用户不同桶，未登录共享 anon 桶", () => {
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+    const a = clientKeyFromRequest(
+      cookieOf(
+        createSessionToken({ id: "usr_1", email: "u1@example.com" }),
+      ),
+    );
+    const b = clientKeyFromRequest(
+      cookieOf(
+        createSessionToken({ id: "usr_2", email: "u2@example.com" }),
+      ),
+    );
+    expect(a).not.toBe(b);
+    expect(clientKeyFromRequest(new Headers())).toBe("anon");
+    expect(clientKeyFromRequest(new Headers({ cookie: "other=1" }))).toBe("anon");
+  });
+
+  it("直连：伪造或篡改的会话 Cookie 回落 anon（不获得额外额度）", () => {
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY;
+    const valid = createSessionToken({
+      id: "usr_tamper",
+      email: "tamper@example.com",
+    });
+    const [body] = valid.split(".");
+    const forgedCases = [
+      "eyJzdWIiOiJ1c3JfYXR0YWNrZXIifQ.deadbeefdeadbeef",
+      `${body}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`,
+      `${valid}x`,
+      "",
+    ];
+    for (const token of forgedCases) {
+      expect(
+        clientKeyFromRequest(cookieOf(token)),
+        `伪造 token 不应获得独立桶: ${token.slice(0, 24)}`,
+      ).toBe("anon");
+    }
+  });
+
+  it("直连：一个用户用满额度不影响另一个用户（分桶隔离）", async () => {
+    process.env.RATE_LIMIT_TRUSTED_PROXY = "0";
+    process.env.RATE_LIMIT_CRUD_MAX = "2";
+    process.env.RATE_LIMIT_CRUD_WINDOW_MS = "60000";
+    setRateLimiterForTests(null);
+    getMemoryRateLimiter().reset();
+
+    const call = (token: string) =>
+      enforceRateLimit(
+        new Request("https://app.test/api/charts", {
+          method: "GET",
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+        }),
+        "crud",
+        "api.charts.list",
+      );
+
+    const tokenA = createSessionToken({ id: "usr_iso_a", email: "a@example.com" });
+    const tokenB = createSessionToken({ id: "usr_iso_b", email: "b@example.com" });
+
+    expect(await call(tokenA)).toBeNull();
+    expect(await call(tokenA)).toBeNull();
+    const blocked = await call(tokenA);
+    expect(blocked?.status).toBe(429);
+    // A 已被限，B 仍应放行；改动前两者共用 anon 桶，B 也会 429
+    expect(await call(tokenB)).toBeNull();
   });
 });
 

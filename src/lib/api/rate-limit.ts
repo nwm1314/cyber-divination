@@ -19,15 +19,20 @@
  */
 
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { MESSAGES } from "@/content/zh";
 import { Redis } from "@upstash/redis";
 import { ErrorCode } from "@/lib/types";
+import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import { logApi } from "./logger";
 import { isIP } from "node:net";
 
 export type RateLimitBucket = "reading" | "share" | "auth" | "account" | "crud";
 
 export type RateLimitIdentityMode = "direct" | "trusted-proxy";
+
+/** 直连模式下没有任何可核验身份时的共享桶键（代价见 docs/DEPLOY.md「限流身份」） */
+export const ANON_CLIENT_KEY = "anon";
 
 export type RateLimitConfig = {
   max: number;
@@ -257,9 +262,45 @@ function normalizeIp(raw: string | undefined): string | null {
   return isIP(value) > 0 ? value : null;
 }
 
+function readCookieValue(
+  cookieHeader: string | null,
+  name: string,
+): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const [rawKey, ...rest] = part.split("=");
+    if (rawKey?.trim() !== name) continue;
+    const value = rest.join("=").trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+/**
+ * 直连模式下的可核验身份（B7）。
+ *
+ * 转发头在直连模式下不可信（调用方可自设），因此退回到**服务端自己签发的
+ * 会话 Cookie**：HMAC 由 `sessionFromToken` 校验，伪造即视为匿名，
+ * 攻击者无法靠刷 Cookie 获得额外桶。只取 userId 的单向摘要，
+ * 避免内部用户 id 原样进入 Redis 键与日志。
+ *
+ * 未登录请求仍共享 `anon` 一个桶 —— 直连部署要按用户/按 IP 分桶，
+ * 必须配 `RATE_LIMIT_TRUSTED_PROXY=1` 且由代理覆写 IP 头（见 docs/DEPLOY.md）。
+ */
+function directModeClientKey(headers: Headers): string {
+  const token = readCookieValue(headers.get("cookie"), SESSION_COOKIE_NAME);
+  if (!token) return ANON_CLIENT_KEY;
+  const session = sessionFromToken(token);
+  if (!session.authenticated || !session.userId) return ANON_CLIENT_KEY;
+  const digest = createHash("sha256").update(session.userId).digest("hex");
+  return `user:${digest.slice(0, 16)}`;
+}
+
 /** 从请求头解析客户端标识；直连模式永远不信任客户端可控的转发头。 */
 export function clientKeyFromRequest(headers: Headers): string {
-  if (getRateLimitIdentityMode() === "direct") return "anon";
+  if (getRateLimitIdentityMode() === "direct") {
+    return directModeClientKey(headers);
+  }
 
   // X-Real-IP is a single-hop value in the supported proxy examples. Keep
   // X-Forwarded-For as a compatibility fallback for proxies that do not set
@@ -270,7 +311,7 @@ export function clientKeyFromRequest(headers: Headers): string {
   const forwardedIp = normalizeIp(
     headers.get("x-forwarded-for")?.split(",", 1)[0],
   );
-  return forwardedIp ?? "anon";
+  return forwardedIp ?? ANON_CLIENT_KEY;
 }
 
 export function rateLimitResponseHeaders(result: RateLimitResult): Record<string, string> {

@@ -79,7 +79,16 @@ DDL：`src/lib/db/schema.ts` / `src/lib/db/migrate.sql`。
 | `UPSTASH_REDIS_REST_URL` | `redis` 时必填 | — | 可与分享共用同一 Upstash 库 |
 | `UPSTASH_REDIS_REST_TOKEN` | `redis` 时必填 | — | 同上 |
 
-客户端标识由 `RATE_LIMIT_TRUSTED_PROXY` 决定：`0` 时忽略所有转发头并使用直连地址；`1` 时只使用受管反代覆盖后的 `X-Real-IP`，其次才使用 `X-Forwarded-For` 首段，无法验证时回落 `anon`。超限返回 **HTTP 429**，并带 `X-RateLimit-*`、`Retry-After`。
+客户端标识由 `RATE_LIMIT_TRUSTED_PROXY` 决定，超限返回 **HTTP 429** 并带 `X-RateLimit-*`、`Retry-After`：
+
+| 模式 | 身份来源 | 桶粒度与代价 |
+|------|----------|--------------|
+| `0`（直连） | **只认服务端自己签发的会话 Cookie**（HMAC 验签后取 `sha256(userId)` 前 16 位），忽略一切转发头 | 已登录用户各占一个桶；**未登录请求共用同一个 `anon` 桶** |
+| `1`（可信反代） | 反代**覆盖式**写入的 `X-Real-IP`，其次 `X-Forwarded-For` 首段；非法值回落 `anon` | 按 IP 分桶，登录/匿名一视同仁 |
+
+直连模式为何不读转发头：应用被直连时 `X-Forwarded-For` 由调用方自设，信任它等于让攻击者自选桶键，限流形同虚设（这是刻意取舍，不是缺陷）。为何也拿不到真实 IP：`/api/*` 走 Next.js Route Handler，Node 层不向应用暴露对端地址。
+
+**直连部署必须接受的代价**：匿名流量共用一个桶——单个访客即可把全站匿名请求一起限到 429；反过来也无法按 IP 封禁单个滥用者。要获得按 IP 的粒度，必须置于会覆盖 `X-Real-IP` 的反代之后并设 `RATE_LIMIT_TRUSTED_PROXY=1`（见 §7）。
 
 | 驱动 | 行为 |
 |------|------|

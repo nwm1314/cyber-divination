@@ -5,13 +5,13 @@ export type ApiLogFields = {
   status?: number;
   durationMs?: number;
   /**
-   * 客户端标识（限流用）。
+   * 客户端标识（限流用），取值随部署模式而定：
+   * - trusted-proxy：**明文 IP**（`x-real-ip` / `x-forwarded-for` 首项）
+   * - direct：已验签会话的 `user:<sha256(userId) 前 16 位>`，未登录/伪造为 `anon`
    *
-   * 修复（P2 A7）：原注释写「已脱敏，如 IP 哈希前缀」，但
-   * rate-limit.ts 的 clientKeyFromRequest 实际返回**明文 IP 或 "anon"**
-   * （不做哈希——限流桶必须按真实 IP 区分，哈希不改变可区分性，
-   * 反而增加无谓的 CPU 开销）。注释与实现不符，现按实际行为更正：
-   * 该字段可能含明文 IP，属 PII，日志出境前应确保合规。
+   * 修复（P2 A7）：原注释写「已脱敏，如 IP 哈希前缀」，但实现返回明文 IP，
+   * 注释与实现不符，现按实际行为更正。
+   * 注意：可信代理模式下的明文 IP 属 PII，日志出境前应确保合规。
    */
   clientKey?: string;
   /** 术数：bazi | ziwei | liuyao */
