@@ -45,13 +45,58 @@ describe("runReadinessChecks（T302）", () => {
     vi.resetModules();
   });
 
-  it("无 DB 要求时 db 为 skipped，整体 ready", async () => {
+  it("无 DB 要求时 db 为 skipped，整体 ready 但标记 degraded", async () => {
     const { runReadinessChecks } = await import("./readiness");
     const r = await runReadinessChecks();
     expect(r.checks.db.skipped).toBe(true);
     expect(r.checks.db.ok).toBe(true);
     expect(r.checks.redis.skipped).toBe(true);
     expect(r.ready).toBe(true);
+    // B6：file 驱动下 ready 恒 true 会被读成"依赖健康"，必须显式标降级
+    expect(r.degraded).toBe(true);
+    expect(r.degradedChecks).toEqual(["db", "redis"]);
+  });
+
+  it("两项依赖都真正校验过时 degraded 为 false", async () => {
+    process.env.CLOUD_STORE_DRIVER = "postgres";
+    process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+    process.env.RATE_LIMIT_DRIVER = "redis";
+    process.env.UPSTASH_REDIS_REST_URL = "https://r.example";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "t";
+
+    vi.doMock("@/lib/db", () => ({
+      isDatabaseConfigured: () => true,
+      dbHealthCheck: async () => ({ ok: true, message: "ok" }),
+    }));
+    vi.doMock("@upstash/redis", () => ({
+      Redis: class {
+        async ping() {
+          return "PONG";
+        }
+      },
+    }));
+
+    const { runReadinessChecks } = await import("./readiness");
+    const r = await runReadinessChecks();
+    expect(r.ready).toBe(true);
+    expect(r.degraded).toBe(false);
+    expect(r.degradedChecks).toEqual([]);
+  });
+
+  it("仅一项依赖未接入时，degradedChecks 只含该项", async () => {
+    process.env.CLOUD_STORE_DRIVER = "postgres";
+    process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+
+    vi.doMock("@/lib/db", () => ({
+      isDatabaseConfigured: () => true,
+      dbHealthCheck: async () => ({ ok: true, message: "ok" }),
+    }));
+
+    const { runReadinessChecks } = await import("./readiness");
+    const r = await runReadinessChecks();
+    expect(r.ready).toBe(true);
+    expect(r.degraded).toBe(true);
+    expect(r.degradedChecks).toEqual(["redis"]);
   });
 
   it("CLOUD_STORE_DRIVER=postgres 时调用 dbHealthCheck", async () => {

@@ -216,7 +216,15 @@ Compose 启动 Web + Postgres，并使用 named volume 保存数据库和本地�
 | 端点 | 类型 | 预期 | 依赖 |
 |------|------|------|------|
 | `GET /api/health` | **Liveness** | 200 `{ status: "ok" }` | 仅进程存活 |
-| `GET /api/health/ready` | **Readiness** | 200 `{ status: "ready" }` 或 503 | DB / Redis 依赖就绪 |
+| `GET /api/health/ready` | **Readiness** | 200 `{ status: "ready", degraded }` 或 503 | DB / Redis 依赖就绪 |
+
+**degraded 语义（B6）**：`ready` 只回答「被校验过的依赖是否可用」。当某依赖**根本没接入**（`CLOUD_STORE_DRIVER` 走 file、`RATE_LIMIT_DRIVER` 非 redis 且分享不走 upstash）时，该项被跳过并计入 `degradedChecks`，此时 HTTP 仍为 200（实例正常服务，不应被摘流量），但 `degraded: true` 表示**探针无法证明依赖健康**。
+
+```json
+{ "status": "ready", "degraded": true, "degradedChecks": ["db", "redis"] }
+```
+
+监控与上线检查须同时断言 `status === "ready"` 且 `degraded === false`，否则「已降级」会被读成「依赖健康」。dev/file 模式下 `ready: true` 不代表 Postgres 或 Redis 可用。
 
 **Docker 容器**：Dockerfile 已内置 HEALTHCHECK 指令，指向 `/api/health`，间隔 30s，超时 5s，启动缓冲 20s，重试 3 次。容器启动后 Docker 自动进行 liveness 探测。
 

@@ -62,9 +62,14 @@ describe("GET /api/health/ready · 就绪探针", () => {
       status: string;
       checks: unknown;
       timestamp: string;
+      degraded?: boolean;
+      degradedChecks?: string[];
     };
     expect(["ready", "not_ready"]).toContain(body.status);
     expect(body.checks).toBeDefined();
+    // B6：依赖未接入时 ready 仍可能为 true，探针响应必须显式标降级
+    expect(typeof body.degraded).toBe("boolean");
+    expect(Array.isArray(body.degradedChecks)).toBe(true);
     expect(res.headers.get("cache-control")).toContain("no-store");
   });
 });
