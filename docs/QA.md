@@ -184,7 +184,7 @@
 
 - [ ] `DATABASE_URL` 指向正确 Postgres；本机可连通
 - [ ] `npm run db:migrate` 幂等执行无报错（或容器内执行）
-- [ ] （建议）设置 `DB_SKIP_ENSURE_SCHEMA=1` 后重启容器，`/api/health/ready` 仍 200
+- [ ] 设置 `DB_SKIP_ENSURE_SCHEMA=1`（生产必填）后重启容器，`/api/health/ready` 仍 200
 - [ ] 迁移后登录排盘，数据写入 PG（非 `data/*.json`）
 
 **G5 · 分享 / Magic Link / 删除流程**

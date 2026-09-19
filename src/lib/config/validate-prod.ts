@@ -275,6 +275,25 @@ export function isFileCloudStoreForbiddenInProd(): boolean {
 }
 
 /**
+ * 生产环境是否仍会在**请求路径**上执行建表 DDL（B2）。
+ *
+ * `db/client.ts:50-60` 的 `ensureSchema()` 被各 `pg-*-store` 与
+ * `auth/pg-users.ts`、`auth/magic-link.ts` 在读写前调用（共 30+ 处），
+ * 只有 `DB_SKIP_ENSURE_SCHEMA=1` 才跳过。留在请求路径有两个代价：
+ * 1. 应用 DB 角色必须具备 CREATE TABLE 权限（违反最小权限；一旦注入面
+ *    被打通，可越出数据面改结构）；
+ * 2. 冷启动并发首请求会同时执行同一份 `SCHEMA_SQL`，`schemaReady` 只在
+ *    单进程内去重（`client.ts:53-58`），多实例仍会互相争抢目录锁。
+ *
+ * 无 DATABASE_URL 时不会执行 DDL（回落 file 存储，另由
+ * `isFileCloudStoreForbiddenInProd` 拦截），因此此处返回 false。
+ */
+export function ensuresSchemaOnRequestPath(): boolean {
+  if (!hasDatabaseUrl()) return false;
+  return !isTruthyOne(process.env.DB_SKIP_ENSURE_SCHEMA);
+}
+
+/**
  * NODE_ENV=production 时校验关键配置；不通过则抛错。
  * 非 production 直接返回。
  */
@@ -307,6 +326,12 @@ export function validateProductionConfig(): void {
   }
 
   validateRateLimitConfig(errors);
+
+  if (ensuresSchemaOnRequestPath()) {
+    errors.push(
+      "生产必须设置 DB_SKIP_ENSURE_SCHEMA=1：先执行 npm run db:migrate 预跑 DDL（src/lib/db/migrate.sql）。请求路径建表要求应用 DB 角色具备 CREATE 权限，且多实例冷启动会并发执行同一份 SCHEMA_SQL",
+    );
+  }
 
   if (errors.length > 0) {
     throw new Error(

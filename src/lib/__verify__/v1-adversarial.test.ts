@@ -33,6 +33,7 @@ describe("V-1 复验 · P0-01 AUTH_SECRET 强度（尝试绕过）", () => {
       "NODE_ENV",
       "AUTH_SECRET",
       "DATABASE_URL",
+      "DB_SKIP_ENSURE_SCHEMA",
       "CLOUD_STORE_DRIVER",
       "RATE_LIMIT_DRIVER",
       "RATE_LIMIT_TRUSTED_PROXY",
@@ -44,6 +45,8 @@ describe("V-1 复验 · P0-01 AUTH_SECRET 强度（尝试绕过）", () => {
     }
     env.NODE_ENV = "production";
     process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+    // B2：生产必填，否则「强密钥必须放行」会被新增的 DDL 校验挡住
+    process.env.DB_SKIP_ENSURE_SCHEMA = "1";
     process.env.CLOUD_STORE_DRIVER = "postgres";
     process.env.RATE_LIMIT_DRIVER = "redis";
     process.env.RATE_LIMIT_TRUSTED_PROXY = "0";

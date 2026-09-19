@@ -43,8 +43,10 @@ export function getSql(): Sql {
 /**
  * 应用 DDL（幂等）；请求路径中的存储层仍会调用。
  *
- * 生产建议：部署前执行 `npm run db:migrate` 预跑 DDL，
- * 并设置 `DB_SKIP_ENSURE_SCHEMA=1` 跳过请求路径建表，降低并发 DDL 风险。
+ * 生产必填：部署前执行 `npm run db:migrate` 预跑 DDL，并设置
+ * `DB_SKIP_ENSURE_SCHEMA=1` 跳过请求路径建表 —— 否则应用 DB 角色需要具备
+ * CREATE 权限，且 `schemaReady` 只在单进程内去重，多实例冷启动会并发执行同一份 DDL。
+ * 该项已由 `config/validate-prod.ts` 与 `scripts/validate-prod-env.mjs` 强制。
  * 见 docs/DEPLOY.md。
  */
 export async function ensureSchema(): Promise<void> {

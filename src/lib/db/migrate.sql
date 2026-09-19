@@ -2,7 +2,7 @@
 -- 用法：
 --   npm run db:migrate
 --   或 psql "$DATABASE_URL" -f src/lib/db/migrate.sql
--- 生产建议预跑本文件；可选 DB_SKIP_ENSURE_SCHEMA=1 跳过请求路径 ensureSchema。
+-- 生产必填：预跑本文件并设 DB_SKIP_ENSURE_SCHEMA=1，跳过请求路径 ensureSchema。
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,

@@ -60,10 +60,10 @@ Key 形态：`share:{token}`（见 `src/lib/share/upstash-redis.ts`）。
 | `AUTH_EMAIL_FROM` / `RESEND_API_KEY` | 发信可选 | — | 未配时开发返回 `devLink` |
 | `DATABASE_URL` | 生产账号建议 | — | Postgres 连接串；有则用户/三术档案走 PG |
 | `CLOUD_STORE_DRIVER` | 否 | 自动 | `file` \| `postgres`；`postgres` 时 `DATABASE_URL` 必填 |
-| `DB_SKIP_ENSURE_SCHEMA` | 否 | 关 | 设 `1` 时跳过请求路径 `ensureSchema()`（生产建议在 `db:migrate` 后开启） |
+| `DB_SKIP_ENSURE_SCHEMA` | **生产必填** | 关 | 设 `1` 跳过请求路径 `ensureSchema()`；`NODE_ENV=production` 且配了 `DATABASE_URL` 时未设为 `1` 会被 `check:prod-env` 与 `instrumentation` 拒绝启动 |
 
 DDL：`src/lib/db/schema.ts` / `src/lib/db/migrate.sql`。  
-**生产**：启动应用前执行 `npm run db:migrate`（幂等 `CREATE IF NOT EXISTS`）；可选 `DB_SKIP_ENSURE_SCHEMA=1`。  
+**生产**：启动应用前执行 `npm run db:migrate`（幂等 `CREATE IF NOT EXISTS`），并**必须**设 `DB_SKIP_ENSURE_SCHEMA=1`。请求路径建表要求应用 DB 角色具备 `CREATE` 权限，且多实例冷启动会并发执行同一份 `SCHEMA_SQL`（`schemaReady` 只在单进程内去重）。  
 开发：无 `DATABASE_URL` 时回落 `data/*.json`；有库时请求路径仍可 `ensureSchema()` 幂等建表。
 
 ### 2.4 API 限流（T210）
@@ -735,7 +735,7 @@ npm run dev
 ### 11.3 数据与发布
 
 - [ ] 启动应用前已执行 `npm run db:migrate`；
-- [ ] （建议）`DB_SKIP_ENSURE_SCHEMA=1`；
+- [ ] `DB_SKIP_ENSURE_SCHEMA=1`（生产必填，`check:prod-env` 已强制）；
 - [ ] `NODE_ENV=production npm run check:prod-env` 通过；
 - [ ] 完成 Postgres 备份与恢复演练（见 §11.4）；
 - [ ] 分享 TTL 和账号删除策略已确认；

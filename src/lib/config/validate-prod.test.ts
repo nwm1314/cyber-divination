@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   AUTH_SECRET_MIN_LENGTH,
   checkAuthSecretStrength,
+  ensuresSchemaOnRequestPath,
   isFileCloudStoreForbiddenInProd,
   isFileShareStoreForbiddenInProd,
   validateProductionConfig,
@@ -18,6 +19,7 @@ const ENV_KEYS = [
   "AUTH_ALLOW_DEV_LOGIN",
   "CLOUD_STORE_DRIVER",
   "DATABASE_URL",
+  "DB_SKIP_ENSURE_SCHEMA",
   "RATE_LIMIT_DRIVER",
   "RATE_LIMIT_TRUSTED_PROXY",
   "UPSTASH_REDIS_REST_URL",
@@ -47,6 +49,7 @@ function clearProdRelated() {
   delete process.env.AUTH_ALLOW_DEV_LOGIN;
   delete process.env.CLOUD_STORE_DRIVER;
   delete process.env.DATABASE_URL;
+  delete process.env.DB_SKIP_ENSURE_SCHEMA;
   delete process.env.RATE_LIMIT_DRIVER;
   delete process.env.RATE_LIMIT_TRUSTED_PROXY;
   delete process.env.UPSTASH_REDIS_REST_URL;
@@ -119,6 +122,8 @@ describe("validateProductionConfig（T302）", () => {
     process.env.AUTH_SECRET = STRONG_SECRET;
     process.env.DATABASE_URL = "postgres://u:p@localhost/db";
     process.env.CLOUD_STORE_DRIVER = "postgres";
+    // B2：生产改为部署前预跑 DDL，请求路径不再建表
+    process.env.DB_SKIP_ENSURE_SCHEMA = "1";
     setValidRateLimitConfig();
     expect(() => validateProductionConfig()).not.toThrow();
   });
@@ -338,7 +343,63 @@ describe("isFileShareStoreForbiddenInProd（P0 修复回归）", () => {
     process.env.AUTH_SECRET = STRONG_SECRET;
     process.env.DATABASE_URL = "postgres://u:p@localhost/db";
     process.env.CLOUD_STORE_DRIVER = "postgres";
+    process.env.DB_SKIP_ENSURE_SCHEMA = "1";
     setValidRateLimitConfig();
     expect(() => validateProductionConfig()).not.toThrow();
+  });
+});
+
+/**
+ * B2 回归：生产必须在部署前预跑 DDL，而不是在请求路径建表。
+ *
+ * 事实更正：交接提示词称「全项目 grep DB_SKIP_ENSURE_SCHEMA → 0 命中」，
+ * 实际该开关自 T221 起就存在（`db/client.ts:52`）、`.env.example:65`、
+ * `compose.production.yaml:40`、`compose.acceptance.yaml:45` 均已设置。
+ * 真实缺口是**两套校验器都不读它**，非 compose 部署（standalone / PaaS）
+ * 默认仍在请求路径执行 `CREATE TABLE`。
+ */
+describe("ensuresSchemaOnRequestPath（B2 修复回归）", () => {
+  it("未配置 DATABASE_URL 时不视为请求期 DDL（回落 file 存储，另有校验拦截）", () => {
+    snapshotEnv();
+    clearProdRelated();
+    expect(ensuresSchemaOnRequestPath()).toBe(false);
+  });
+
+  it("有 DATABASE_URL 且未设开关 → 仍会在请求路径建表", () => {
+    snapshotEnv();
+    clearProdRelated();
+    process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+    expect(ensuresSchemaOnRequestPath()).toBe(true);
+  });
+
+  it("开关为 1 时跳过；0 / 空串 / 空白不视为跳过", () => {
+    snapshotEnv();
+    clearProdRelated();
+    process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+    for (const v of ["0", "", "  "]) {
+      process.env.DB_SKIP_ENSURE_SCHEMA = v;
+      expect(ensuresSchemaOnRequestPath()).toBe(true);
+    }
+    process.env.DB_SKIP_ENSURE_SCHEMA = "1";
+    expect(ensuresSchemaOnRequestPath()).toBe(false);
+    restoreEnv();
+  });
+
+  it("生产 fail-fast：仅缺 DB_SKIP_ENSURE_SCHEMA 时抛错并给出迁移命令", () => {
+    snapshotEnv();
+    env.NODE_ENV = "production";
+    clearProdRelated();
+    process.env.AUTH_SECRET = STRONG_SECRET;
+    process.env.DATABASE_URL = "postgres://u:p@localhost/db";
+    process.env.CLOUD_STORE_DRIVER = "postgres";
+    setValidRateLimitConfig();
+    expect(() => validateProductionConfig()).toThrow(/DB_SKIP_ENSURE_SCHEMA/);
+    try {
+      validateProductionConfig();
+    } catch (error) {
+      expect(error instanceof Error ? error.message : "").toMatch(
+        /db:migrate/,
+      );
+    }
   });
 });

@@ -201,6 +201,17 @@ function validateRateLimitConfig(errors) {
   }
 }
 
+/** 与 src/lib/config/validate-prod.ts 的 isTruthyOne/ensuresSchemaOnRequestPath 对齐 */
+function isTruthyOne(raw) {
+  return (raw ?? "").trim() === "1";
+}
+
+/** 生产是否仍会在请求路径执行建表 DDL（B2） */
+function ensuresSchemaOnRequestPath() {
+  if (!hasDatabaseUrl()) return false;
+  return !isTruthyOne(process.env.DB_SKIP_ENSURE_SCHEMA);
+}
+
 function validateProductionConfig() {
   if (!isProduction()) {
     // 修复（P2 A6）：此前在非生产环境**静默跳过**全部校验，
@@ -255,6 +266,12 @@ function validateProductionConfig() {
   }
 
   validateRateLimitConfig(errors);
+
+  if (ensuresSchemaOnRequestPath()) {
+    errors.push(
+      "生产必须设置 DB_SKIP_ENSURE_SCHEMA=1：先执行 npm run db:migrate 预跑 DDL（src/lib/db/migrate.sql）。请求路径建表要求应用 DB 角色具备 CREATE 权限，且多实例冷启动会并发执行同一份 SCHEMA_SQL",
+    );
+  }
 
   if (errors.length > 0) {
     console.error("[check:prod-env] 生产配置校验失败:");

@@ -74,12 +74,33 @@ jobs:
           AUTH_SECRET: Zx9pQ2mVt7Lk4Rw8Bn3Hy6Jd1Fg5Cs0Ae2Uo9Pi4Xz7Vb3Nq8Mt5Ky
           CLOUD_STORE_DRIVER: postgres
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          DB_SKIP_ENSURE_SCHEMA: '1'
           SHARE_STORE_DRIVER: upstash
           UPSTASH_REDIS_REST_URL: https://ci.upstash.io
           UPSTASH_REDIS_REST_TOKEN: ci-token
           RATE_LIMIT_DRIVER: redis
           RATE_LIMIT_TRUSTED_PROXY: '0'
         run: npm run check:prod-env
+
+      # B2 回归：请求路径建表（ensureSchema）在生产必须被显式关闭，
+      # 否则应用 DB 角色需要 CREATE 权限，且多实例冷启动并发执行同一份 DDL。
+      - name: Verify production env validator rejects request-time DDL
+        env:
+          NODE_ENV: production
+          AUTH_SECRET: Zx9pQ2mVt7Lk4Rw8Bn3Hy6Jd1Fg5Cs0Ae2Uo9Pi4Xz7Vb3Nq8Mt5Ky
+          CLOUD_STORE_DRIVER: postgres
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          SHARE_STORE_DRIVER: upstash
+          UPSTASH_REDIS_REST_URL: https://ci.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: ci-token
+          RATE_LIMIT_DRIVER: redis
+          RATE_LIMIT_TRUSTED_PROXY: '0'
+        run: |
+          if node scripts/validate-prod-env.mjs 2>/dev/null; then
+            echo "::error::未设 DB_SKIP_ENSURE_SCHEMA=1 时校验器不应通过"
+            exit 1
+          fi
+          echo "OK: 缺少 DB_SKIP_ENSURE_SCHEMA 时 fail-fast"
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
