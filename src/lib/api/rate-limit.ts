@@ -324,6 +324,70 @@ export function rateLimitResponseHeaders(result: RateLimitResult): Record<string
 }
 
 /**
+ * 限流后端（Upstash）不可用时的统一处理。
+ *
+ * 之前 RedisRateLimiter.check 抛出的传输错误会一路冒到 Next，变成没有响应体的
+ * 裸 500，把本该返回的 401/403 掩盖掉。策略（本轮决策）：
+ * - **鉴权答案优先于基础设施状态**：调用方给出 authorizationRejection 时先问它
+ *   「这个请求本来就会被拒吗」，会则原样回它 —— 匿名/跨站请求不该因为 Redis
+ *   挂了而拿到 5xx，也不该因此获得任何访问（401/403 路径本身不做任何 I/O）。
+ * - 否则 fail-closed：503 + Retry-After，禁止静默放行（与「RATE_LIMIT_DRIVER=redis
+ *   缺凭证时禁止静默回落 memory」同一立场）。原始错误只进服务端日志。
+ *
+ * @returns 正常时是限流结果；后端故障时是应当直接返回给客户端的响应
+ */
+export async function checkRateLimitOrRespond(
+  bucket: RateLimitBucket,
+  clientKey: string,
+  authorizationRejection: () => NextResponse | null = () => null,
+  routeLabel?: string,
+): Promise<RateLimitResult | NextResponse> {
+  try {
+    return await checkRateLimit(bucket, clientKey);
+  } catch (error) {
+    // 先定下要回什么，再按实际状态记日志（回 401/403 时不该记成 503）
+    const rejection = authorizationRejection();
+    logApi("error", "api.rate_limiter_unavailable", {
+      requestId: crypto.randomUUID(),
+      route: routeLabel ?? `rate-limit:${bucket}`,
+      bucket,
+      clientKey,
+      status: rejection?.status ?? 503,
+      errorCode: "RATE_LIMITER_UNAVAILABLE",
+      detail: error instanceof Error ? error.message : String(error),
+    });
+    return rejection ?? rateLimitUnavailableResponse(bucket);
+  }
+}
+
+/** 限流后端不可用时的 503 响应（fail-closed） */
+export function rateLimitUnavailableResponse(
+  bucket: RateLimitBucket,
+): NextResponse {
+  const { windowMs } = getRateLimitConfig(bucket);
+  const resetMs = Math.max(1000, windowMs);
+  return NextResponse.json(
+    {
+      error: {
+        code: ErrorCode.SERVICE_UNAVAILABLE,
+        message: MESSAGES.serviceUnavailable,
+      },
+    },
+    {
+      status: 503,
+      headers: { "Retry-After": String(Math.ceil(resetMs / 1000)) },
+    },
+  );
+}
+
+/** 判别 checkRateLimitOrRespond 的返回：是应当直接回给客户端的响应，还是限流结果 */
+export function isRateLimitResponse(
+  value: RateLimitResult | NextResponse,
+): value is NextResponse {
+  return !("allowed" in value);
+}
+
+/**
  * 便捷入口：按桶检查限流，超限时返回可直接使用的 429 响应。
  *
  * 用法：
@@ -342,9 +406,17 @@ export async function enforceRateLimit(
   request: Request,
   bucket: RateLimitBucket,
   routeLabel: string,
+  authorizationRejection?: () => NextResponse | null,
 ): Promise<NextResponse | null> {
   const clientKey = clientKeyFromRequest(request.headers);
-  const rl = await checkRateLimit(bucket, clientKey);
+  const outcome = await checkRateLimitOrRespond(
+    bucket,
+    clientKey,
+    authorizationRejection,
+    routeLabel,
+  );
+  if (isRateLimitResponse(outcome)) return outcome;
+  const rl = outcome;
   if (rl.allowed) return null;
 
   logApi("warn", "api.rate_limited", {

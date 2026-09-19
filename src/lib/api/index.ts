@@ -17,12 +17,15 @@ export { assertSameOrigin } from "@/lib/api/origin";
 export { versionConflictResponse } from "@/lib/api/version-conflict";
 export {
   checkRateLimit,
+  checkRateLimitOrRespond,
   clientKeyFromRequest,
   createRateLimiter,
   getMemoryRateLimiter,
   getRateLimitConfig,
+  isRateLimitResponse,
   rateLimit,
   rateLimitResponseHeaders,
+  rateLimitUnavailableResponse,
   RedisRateLimiter,
   setRateLimiterForTests,
   type RateLimitBucket,

@@ -460,6 +460,8 @@ export const ErrorCode = {
   AUTH_MERGE_CONFLICT: "AUTH_MERGE_CONFLICT",
   /** 乐观锁版本落后：其他设备已先写入（B4），需刷新后重试而非直接覆盖 */
   STORAGE_VERSION_CONFLICT: "STORAGE_VERSION_CONFLICT",
+  /** 限流等依赖后端不可用，且无法在不跳过保护的前提下服务请求 */
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

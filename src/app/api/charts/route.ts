@@ -27,42 +27,63 @@ function unauthorized() {
   );
 }
 
+/**
+ * 云端档案面的准入判定（读：需登录；写：还需同源）。
+ *
+ * 抽出来是因为限流后端不可用时也要问一次同样的问题 —— 鉴权答案必须优先于
+ * 基础设施状态，否则匿名请求会拿到 5xx 而不是它本该得到的 401/403。
+ */
+function readAccess(request: NextRequest) {
+  const session = sessionFromToken(
+    request.cookies.get(SESSION_COOKIE_NAME)?.value,
+  );
+  if (!session.authenticated || !session.userId) {
+    return { rejection: unauthorized(), userId: "" };
+  }
+  return { rejection: null as NextResponse | null, userId: session.userId };
+}
+
+function writeAccess(request: NextRequest) {
+  const originErr = assertSameOrigin(request);
+  if (originErr) {
+    return {
+      rejection: NextResponse.json(
+        { error: { code: ErrorCode.AUTH_FORBIDDEN, message: originErr } },
+        { status: 403 },
+      ),
+      userId: "",
+    };
+  }
+  return readAccess(request);
+}
+
 /** GET /api/charts — 本人云端档案列表 */
 export async function GET(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.charts.list");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.charts.list",
+    () => readAccess(request).rejection,
+  );
   if (limited) return limited;
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const session = sessionFromToken(token);
-  if (!session.authenticated || !session.userId) {
-    return unauthorized();
-  }
+  const access = readAccess(request);
+  if (access.rejection) return access.rejection;
 
-  const items = await listCloudCharts(session.userId);
+  const items = await listCloudCharts(access.userId);
   return NextResponse.json({ items });
 }
 
 /** POST /api/charts — 保存/覆盖本人档案（userId 仅来自 session） */
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.charts.create");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.charts.create",
+    () => writeAccess(request).rejection,
+  );
   if (limited) return limited;
-  const originErr = assertSameOrigin(request);
-  if (originErr) {
-    return NextResponse.json(
-      {
-        error: {
-          code: ErrorCode.AUTH_FORBIDDEN,
-          message: originErr,
-        },
-      },
-      { status: 403 },
-    );
-  }
-
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const session = sessionFromToken(token);
-  if (!session.authenticated || !session.userId) {
-    return unauthorized();
-  }
+  const access = writeAccess(request);
+  if (access.rejection) return access.rejection;
 
   const parsed = await parseJsonBody(request, cloudChartUpsertSchema);
   if (!parsed.ok) {
@@ -80,7 +101,7 @@ export async function POST(request: NextRequest) {
   const profile = {
     ...parsed.data.profile,
     id: parsed.data.profile.id,
-    userId: session.userId,
+    userId: access.userId,
   } as BirthProfile;
   let authoritativeChart: ReturnType<typeof computeAuthoritativeChart>;
   try {
@@ -108,7 +129,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const record = await upsertCloudChart(session.userId, body, {
+    const record = await upsertCloudChart(access.userId, body, {
       expectedVersion: parsed.data.expectedVersion,
     });
     return NextResponse.json({ record });

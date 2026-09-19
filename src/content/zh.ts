@@ -93,6 +93,7 @@ export const MESSAGES = {
   saveFailed: "保存失败，请检查填写内容后重试",
   saveFailedRetry: "保存失败，请稍后重试",
   rateLimited: "请求过于频繁，请稍后再试",
+  serviceUnavailable: "服务暂时不可用，请稍后重试",
   cloudFailed: "云端操作失败，请确认已登录后重试",
   notFoundChart: "未找到命盘数据，请先完成排盘。",
   readingFailed: "解读生成失败，请稍后重试。",
