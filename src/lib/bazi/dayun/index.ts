@@ -45,8 +45,11 @@ function addMonthsUtc(
 
 /**
  * 起运：出生日到最近节（顺/逆）天数 ÷ 3
- * skill：整岁 = round(天/3)；余 1 天≈4 月、余 2 天≈8 月
- * 交运日 startAt = 出生日期 + years*12 + months 个月
+ *
+ * 口径（见 docs/ENGINE_RULE_DAYUN_START.md §2）：**三天一岁·精确到月**，
+ * 即 3 天 = 1 年、1 天 = 4 个月；余数保留为月，不四舍五入到整岁。
+ *
+ * 交运日 startAt = 出生日期 + (years*12 + months) 个月
  */
 function calcStartAgeDetail(
   birthDate: string,
@@ -81,24 +84,28 @@ function calcStartAgeDetail(
   diffDays /= 1000 * 60 * 60 * 24;
   if (diffDays < 0) diffDays = 0;
 
-  const raw = diffDays / 3;
-  let years = Math.floor(raw + 1e-9);
-  let months = Math.round((raw - years) * 12);
-  if (months >= 12) {
-    years += 1;
-    months = 0;
-  }
+  // 月级总折算：3 天 = 1 年 = 12 个月 ⇒ 1 天 = 4 个月。
+  // 先算总月数再拆分，避免「先取整岁再对余数取整」两次取整叠加误差。
+  const totalMonthsExact = (diffDays / 3) * 12;
+  const totalMonths = Math.round(totalMonthsExact + 1e-9);
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
 
-  const totalMonths = years * 12 + months;
   const start = addMonthsUtc(year, month, day, totalMonths);
   const startAt = formatYmd(start.year, start.month, start.day);
 
   return { years, months, diffDays, startAt };
 }
 
-/** 兼容：整岁 = round(天/3) */
-function toRoundedStartAge(detail: StartAgeDetail): number {
-  return Math.round(detail.diffDays / 3);
+/**
+ * 起运总月数（供分档与交运判定）。
+ *
+ * 等价于 `years*12 + months`，即 3 天 = 1 年、1 天 = 4 个月的四舍五入到月。
+ * 与 `calcStartAgeDetail` 使用同一取整规则，保证 `startAge`/`startAt`
+ * 与 `currentDayunIndex` 三者自洽。
+ */
+function startTotalMonthsFromDetail(detail: StartAgeDetail): number {
+  return detail.years * 12 + detail.months;
 }
 
 function shiftStem(stem: string, n: number, dir: "forward" | "reverse"): string {
@@ -150,7 +157,13 @@ function generateDayunSteps(
   }
 
   for (let i = 0; i < 8; i++) {
-    const stepStart = startAge + i * 10;
+    // 每步起运的**精确**年龄：首步为起运的 years+months，
+    // 其后每步整体后移 10 年（整周期），故余月继承首步。
+    // 月级字段用于 currentDayunIndex 判定，见 startTotalMonthsFromDetail 注释。
+    const stepStartMonths = i * 120;
+    const totalMonths = startAge * 12 + startAgeMonths + stepStartMonths;
+    const stepStart = Math.floor(totalMonths / 12);
+
     const step: DayunStep = {
       index: i,
       stem: shiftStem(monthPillar.stem, i + 1, direction),
@@ -223,7 +236,11 @@ export function computeDayun(
     birthMinute,
     direction,
   );
-  const startAge = toRoundedStartAge(startAgeDetail);
+  // 起运整岁（用于展示字段）与总月数（用于分档判定）同源，
+  // 二者由同一 totalMonths 拆分而来，保证 startAge/endAge/startAt/
+  // currentDayunIndex 四者自洽（见 docs/ENGINE_RULE_DAYUN_START.md）。
+  const startTotalMonths = startTotalMonthsFromDetail(startAgeDetail);
+  const startAge = Math.floor(startTotalMonths / 12);
   const dayun = generateDayunSteps(
     monthPillar,
     startAge,
@@ -237,10 +254,26 @@ export function computeDayun(
     deathYear !== undefined && deathYear < cy ? deathYear : cy;
   const currentAge = effectiveYear - birthYear;
 
+  // 按**月**判定当前大运：交运日当天即切换，不再出现
+  // 「交运日已到但索引仍停在上一运」的整岁错位。
+  // 月数口径：以分析年度 1 月为观察点，即 (年龄)*12 + 0；
+  // 起运月数为 0 时退化为原有整岁行为，保持向后兼容。
+  const currentAgeMonths = currentAge * 12;
+
   let currentDayunIndex = -1;
-  for (const step of dayun) {
-    if (step.isPreDayun) continue;
-    if (currentAge >= step.startAge && currentAge <= step.endAge) {
+  const formal = dayun.filter((d) => !d.isPreDayun);
+  for (let i = 0; i < formal.length; i++) {
+    const step = formal[i];
+    const stepStartMonths = step.startAge * 12 + (step.startAgeMonths ?? 0);
+    const next = formal[i + 1];
+    const nextStartMonths = next
+      ? next.startAge * 12 + (next.startAgeMonths ?? 0)
+      : stepStartMonths + 120;
+
+    if (
+      currentAgeMonths >= stepStartMonths &&
+      currentAgeMonths < nextStartMonths
+    ) {
       currentDayunIndex = step.index;
       break;
     }

@@ -10,9 +10,14 @@ export type GoldenMeta = {
 
 export const FIXTURE_META: GoldenMeta = {
   source: "engine-regression",
-  ruleSetVersion: "2026.07-w24",
+  ruleSetVersion: "2026.07-w25",
   school: "ziping-default",
-  notes: "内部回归金标准；外部门户集见 docs/research/bazi-sources.md",
+  notes:
+    "内部回归金标准；外部门户集见 docs/research/bazi-sources.md。" +
+    "2026.07-w25：起运改为「三天一岁·精确到月」口径（GAP-2），" +
+    "dayunStartAge 由整岁四舍五入改为月级折算后取整岁，" +
+    "余月 ≥6 的样本因此 −1 岁（与原 startAt 交运日保持一致）。" +
+    "差异报告见 docs/ENGINE_RULE_DAYUN_START.md。",
 };
 
 export type GoldenCase = {
@@ -45,7 +50,8 @@ export const goldenCases: GoldenCase[] = [
         hiddenStems_month: ["己", "癸", "辛"],
         dayunDir: "reverse",
         dayunFirst: "丙子",
-        dayunStartAge: 10,
+        // w25：9 岁 10 个月（diffDays=29.4769）；旧值 10 为整岁进位
+        dayunStartAge: 9,
       },
     },
   },
@@ -64,7 +70,8 @@ export const goldenCases: GoldenCase[] = [
         yearHidden: ["丁", "己"],
         dayunDir: "forward",
         dayunFirst: "己卯",
-        dayunStartAge: 10,
+        // w25：9 岁 11 个月（diffDays=29.7530）；旧值 10 为整岁进位
+        dayunStartAge: 9,
       },
     },
   },
@@ -151,7 +158,8 @@ export const goldenCases: GoldenCase[] = [
         tenGod_hour: "正印",
         dayunDir: "forward",
         dayunFirst: "丁丑",
-        dayunStartAge: 2,
+        // w25：1 岁 8 个月（diffDays=4.9588）；旧值 2 为整岁进位
+        dayunStartAge: 1,
         currentDayunIndex: 2,
       },
     },

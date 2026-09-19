@@ -118,7 +118,17 @@ export type DayunStep = {
   endAge: number;
   startYear: number;
   endYear: number;
-  /** 起运余月（仅第一步正式大运有意义；skill：余天→月） */
+  /**
+   * 该步起运的**余月**（仅第一步正式大运有意义）。
+   *
+   * 口径：三天一岁、精确到月（3 天 = 1 年，1 天 = 4 个月）。
+   * 与 `startAge` 合起来才是精确起运年龄，例如 `startAge=4,
+   * startAgeMonths=9` 表示 4 岁 9 个月起运。
+   * 初始步与 `startAgeDetail.months` 一致；后续每步 +10 年（整周期），
+   * 故余月继承首步。
+   *
+   * 见 docs/ENGINE_RULE_DAYUN_START.md。
+   */
   startAgeMonths?: number;
   /** 是否起运前小运步 */
   isPreDayun?: boolean;

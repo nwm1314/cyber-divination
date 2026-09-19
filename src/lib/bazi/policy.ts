@@ -3,9 +3,9 @@
  * 变更须同步 docs/research/bazi-sources.md 与 ruleSetVersion
  */
 
-export const BAZI_SCHEMA_VERSION = "1.1.0";
-export const BAZI_ENGINE_VERSION = "0.3.0";
-export const BAZI_RULE_SET_VERSION = "2026.07-w24";
+export const BAZI_SCHEMA_VERSION = "1.2.0";
+export const BAZI_ENGINE_VERSION = "0.4.0";
+export const BAZI_RULE_SET_VERSION = "2026.07-w25";
 export const BAZI_SCHOOL = "ziping-default" as const;
 
 /** 夜子时：23:00–24:00 日柱取次日（lunar-javascript setSect(1)） */

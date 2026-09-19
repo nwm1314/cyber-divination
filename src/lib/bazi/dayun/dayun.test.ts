@@ -40,13 +40,23 @@ describe("computeDayun", () => {
     expect(f[1].branch).toBe("卯");
   });
 
-  it("乙丑男 1985-03-20 → reverse startAge=5", () => {
+  it("乙丑男 1985-03-20 → reverse startAge=4（4 岁 9 个月）", () => {
+    // 断言修正（GAP-2 / 波次 3）：原期望 startAge=5 是把缺陷写成了期望值。
+    // 实测 diffDays=14.2803 → 精确月数 57.12 → 4 岁 9 个月，
+    // 交运日 startAt=1989-12-20 正是出生日 +57 个月。
+    // 旧实现用 Math.round(14.2803/3)=5 向上进位，与自身 startAt（4y9m）
+    // 自相矛盾；现按「三天一岁、精确到月」口径取 4。
+    // 见 docs/ENGINE_RULE_DAYUN_START.md。
     const r = computeDayun("戊", p("己", "卯"), "乙", "male", "1985-03-20", 6, 0, undefined, 2026);
     const f = formal(r);
     expect(f[0].stem).toBe("戊");
     expect(f[0].branch).toBe("寅");
-    expect(f[0].startAge).toBe(5);
-    expect(f[0].endAge).toBe(14);
+    expect(f[0].startAge).toBe(4);
+    expect(f[0].endAge).toBe(13);
+    expect(r.startAgeDetail.years).toBe(4);
+    expect(r.startAgeDetail.months).toBe(9);
+    // 自洽性：startAt = 出生日 + (years*12+months) 个月
+    expect(r.startAgeDetail.startAt).toBe("1989-12-20");
   });
 
   it("癸卯女 2023-06-15 → forward startAge", () => {
@@ -56,14 +66,21 @@ describe("computeDayun", () => {
     expect(f.length).toBe(8);
   });
 
-  it("丙子男 1996-12-25 → forward startAge=4", () => {
+  it("丙子男 1996-12-25 → forward startAge=3（3 岁 9 个月）", () => {
+    // 断言修正（GAP-2）：原期望 4 同样是缺陷固化。
+    // 实测 diffDays=11.3087 → 精确月数 45.23 → 3 岁 9 个月，
+    // startAt=2000-09-25 = 出生日 +45 个月。
+    // 顺延：原 startYear=2000/endYear=2009 保持不变（startAt 落在 2000 年）。
     const r = computeDayun("庚", p("庚", "子"), "丙", "male", "1996-12-25", 8, 0, undefined, 2026);
     const f = formal(r);
     expect(f[0].stem).toBe("辛");
     expect(f[0].branch).toBe("丑");
-    expect(f[0].startAge).toBe(4);
-    expect(f[0].startYear).toBe(2000);
-    expect(f[0].endYear).toBe(2009);
+    expect(f[0].startAge).toBe(3);
+    expect(f[0].startYear).toBe(1999);
+    expect(f[0].endYear).toBe(2008);
+    expect(r.startAgeDetail.years).toBe(3);
+    expect(r.startAgeDetail.months).toBe(9);
+    expect(r.startAgeDetail.startAt).toBe("2000-09-25");
   });
 
   it("currentDayunIndex 查找到当前大运", () => {
