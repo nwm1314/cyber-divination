@@ -488,13 +488,13 @@ TEST_EXIT=0
 Found 2 warnings while optimizing generated CSS:
 
 Issue #1:
-│   .w-\[0_0_\*px_var\(--\*-glow\)\] {
-│     width: 0 0 *px var(--*-glow);
+│   .w-\[0_0_通配px_var(--通配-glow)\] {
+│     width: 0 0 通配px var(--通配-glow);
 ┆                          ^-- Unexpected token Delim('*')
 
 Issue #2:
-│   .shadow-\[0_0_\*px_var\(--\*-glow\)\] {
-│     --tw-shadow: 0 0 *px var(--*-glow);
+│   .shadow-\[0_0_通配px_var(--通配-glow)\] {
+│     --tw-shadow: 0 0 通配px var(--通配-glow);
 ┆                                ^-- Unexpected token Delim('*')
 
 ✓ Compiled successfully in 7.5s
@@ -540,20 +540,21 @@ TEST_EXIT=0
 
 1. 生成的 CSS（`.next/static/chunks/36epm5m8sbj2k.css`，60095 字节）中确实存在非法规则：
    ```
-   .shadow-\[0_0_\*px_var\(--\*-glow\)\]{box-shadow:var(--tw-inset-shadow), ...}
+   .shadow-\[0_0_通配px_var(--通配-glow)\]{box-shadow:var(--tw-inset-shadow), ...}
    ```
-2. 全仓搜索该字面量，唯一命中 **`docs/REVIEW_DESIGN_INVENTORY.md:300` 与 `:323`**：
-   ```
-   300: | 其余（`w-[0_0_*px_var(--*-glow)]` 系阴影被 `w-` 前缀误配所得） | 17 |
-   323: | `--shadow-glow-sm/md/lg` | 全部 `shadow-[0_0_*px_var(--*-glow)]` | 17 |
-   ```
+2. 全仓搜索该字面量，唯一命中 **`docs/REVIEW_DESIGN_INVENTORY.md:300` 与 `:323`**
+   （原文为反引号包裹、方括号内含通配符的阴影任意值类名；此处已按 §修复方式脱敏书写）。
 3. 该文档**未被这 6 个 P1/P2 commit 修改**（`git log -- docs/REVIEW_DESIGN_INVENTORY.md` 只显示 `8911b5e`）。
 
-**结论**：警告的根因是 **Tailwind v4 的静态提取器扫描了 Markdown 文档中的字面量**（`docs/` 在扫描范围内），把文档里作为**说明文字**的反引号代码片段当成了真实工具类，生成了 `w-[0_0_*px_...]` 与 `shadow-[0_0_*px_...]` 两条非法规则。这**确实不是这 6 个 commit 引入的**（文档未被它们改动），但也不是"上游 Turbopack 交互"——而是**文档内含可被误提取的类名字面量**。
+**结论**：警告的根因是 **Tailwind v4 的静态提取器扫描了 Markdown 文档中的字面量**（`docs/` 在扫描范围内），把文档里作为**说明文字**的反引号代码片段当成了真实工具类，生成了两条非法规则（`w-` 前缀与 `shadow-` 前缀各一，方括号内为通配描述）。
 
-`globals.css:66-68` 的注释已意识到同类风险（"注释中不要写出 shadow- 紧跟方括号的任意值类名文本"），但只治理了 `globals.css`，**未治理 `docs/REVIEW_DESIGN_INVENTORY.md`**。修复方向是把该文档里的 `` `w-[0_0_*px_var(--*-glow)]` `` 拆开写（如加空格或转义）以避开提取器。
+`globals.css` 的注释已意识到同类风险，但只治理了 `globals.css`，**未治理 `docs/`**。
 
-> **未验证**：未实际修改该文档验证警告消失（禁止修改报告外文件）。
+> **后续（第二轮已修复）**：`docs/` 与源码注释中的可被误提取的类名字面量已全部脱敏改写，
+> 非法 CSS 规则不再生成，`npx playwright test` 恢复通过。
+> 同时更正一处误判：本轮实测确认 `src/components/chart/WuxingBars.tsx` 的注释
+> 也曾抄写解析器报错原文，构成第二个触发点；该注释已一并脱敏。
+> 详见 `docs/FIX_REPORT_ROUND2.md` §11。
 
 ---
 

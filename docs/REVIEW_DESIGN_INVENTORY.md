@@ -297,7 +297,7 @@
 | `max-w-[50%]` | 1 |
 | `min-h-[2.5rem]` | 1 |
 | `min-h-[1.25rem]` | 1 |
-| 其余（`w-[0_0_*px_var(--*-glow)]` 系阴影被 `w-` 前缀误配所得） | 17 |
+| 其余（`w-` 前缀误配阴影任意值所得，形如 `w-` + 方括号阴影表达式） | 17 |
 
 > **宽度混用 `rem`（10rem/12rem）与 `px`（240px）两套单位。**
 
@@ -320,7 +320,7 @@
 | `--gold-border` | `border-gold/40`,`/30`,`/50`,`/25`,`/20` | 25 |
 | `--muted-subtle` / `--muted-mid` / `--muted-faint` | `text-muted/60`,`/70`,`/50` | 23 |
 | `--gold-wash` / `--cyan-wash` | `bg-gold/15`,`/10`,`/5` + `bg-cyan/10`,`/15` | 35 |
-| `--shadow-glow-sm/md/lg` | 全部 `shadow-[0_0_*px_var(--*-glow)]` | 17 |
+| `--shadow-glow-sm/md/lg` | 全部阴影任意值写法（方括号内含通配描述的表达式） | 17 |
 | `--text-mini`(10px) / `--text-micro`(11px) | 67（10px+11px） | 67 |
 
 ---

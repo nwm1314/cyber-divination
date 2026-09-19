@@ -70,11 +70,15 @@ export function WuxingBars({ scores, dayMaster, viewMode, chart }: Props) {
               >
                 <div
                   /*
-                    原写法缺少颜色值，是无效 CSS，会导致构建期
-                    "Unexpected token Delim('*')" 警告。改用 currentColor，
-                    使光晕跟随该五行自身的配色。
-                    注意：注释中不要写出完整的任意值类名文本，
-                    Tailwind 的提取器会把注释里的类名当成真实工具类。
+                    原写法缺少颜色值，是无效 CSS，会导致构建期 CSS 解析警告。
+                    改用 currentColor，使光晕跟随该五行自身的配色。
+
+                    维护约定：注释中**不得**写出以方括号开头的任意值类名
+                    （如 shadow 加方括号），也**不得**原样抄写解析器的
+                    报错文案。Tailwind v4 的静态提取器会扫描注释文本，
+                    把其中的片段当成真实工具类，从而生成非法 CSS 规则
+                    （表现为 var(--星号-glow) 这类残缺声明），
+                    使 dev 与 e2e 环境整站样式构建失败。
                   */
                   className={`h-full rounded-full transition-all duration-500 ${w.bar} ${
                     isDominant ? "shadow-[0_0_8px_currentColor]" : ""

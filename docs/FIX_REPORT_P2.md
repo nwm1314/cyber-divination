@@ -466,13 +466,13 @@ TEST_EXIT=0
 Found 2 warnings while optimizing generated CSS:
 
 Issue #1:
-│   .w-\[0_0_\*px_var\(--\*-glow\)\] {
-│     width: 0 0 *px var(--*-glow);
+│   .w-\[0_0_通配px_var(--通配-glow)\] {
+│     width: 0 0 通配px var(--通配-glow);
 ┆                          ^-- Unexpected token Delim('*')
 
 Issue #2:
-│   .shadow-\[0_0_\*px_var\(--\*-glow\)\] {
-│     --tw-shadow: 0 0 *px var(--*-glow);
+│   .shadow-\[0_0_通配px_var(--通配-glow)\] {
+│     --tw-shadow: 0 0 通配px var(--通配-glow);
 ┆                                ^-- Unexpected token Delim('*')
 
 ✓ Compiled successfully in 7.5s
@@ -516,24 +516,24 @@ TEST_EXIT=0
 
 1. 构建产物 `.next/static/chunks/36epm5m8sbj2k.css` 中确实存在非法规则：
    ```css
-   .shadow-\[0_0_\*px_var\(--\*-glow\)\]{box-shadow:var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)}
+   .shadow-\[0_0_通配px_var(--通配-glow)\]{box-shadow:var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)}
    ```
-2. 全仓搜索该字面量，唯一命中 **`docs/REVIEW_DESIGN_INVENTORY.md`**：
-   ```
-   300: | 其余（`w-[0_0_*px_var(--*-glow)]` 系阴影被 `w-` 前缀误配所得） | 17 |
-   323: | `--shadow-glow-sm/md/lg` | 全部 `shadow-[0_0_*px_var(--*-glow)]` | 17 |
-   ```
+2. 全仓搜索该字面量，唯一命中 **`docs/REVIEW_DESIGN_INVENTORY.md`**
+   （`:300` 与 `:323`，原文为反引号包裹、方括号内含通配符的阴影任意值类名）。
 3. 该文档**未被这 6 个 P1/P2 commit 触及**（`git log -- docs/REVIEW_DESIGN_INVENTORY.md` 仅显示 `8911b5e`）。
 
 **结论**：根因是 **Tailwind v4 静态提取器扫描 `docs/` 下的 Markdown**，把文档里作为**说明文字**的反引号代码片段当成了真实工具类。这确实**不是这 6 个 commit 引入的**，但也不是"上游 Turbopack 交互"——而是**文档内含可被误提取的类名字面量**。
 
-值得注意的是，`globals.css:66-68` 的注释已明确意识到同类风险：
+值得注意的是，`globals.css` 的注释已明确意识到同类风险，即**已在该文件内治理，但未治理 `docs/`**，属于治理不彻底。
 
-> 重要：注释中不要写出 "shadow-" 紧跟方括号的任意值类名文本。Tailwind 的静态提取器会把注释里的这种片段当成真实工具类，生成非法 CSS 并触发 "Unexpected token Delim('*')" 构建警告。
+**建议**：把 `docs/` 中相关文档里的此类类名字面量拆开书写（插入空格或改为行内描述）以避开提取器。
 
-即：**已在 `globals.css` 内治理，但未治理 `docs/REVIEW_DESIGN_INVENTORY.md`**，属于治理不彻底。
-
-**建议**：把该文档中的 `` `w-[0_0_*px_var(--*-glow)]` `` / `` `shadow-[0_0_*px_var(--*-glow)]` `` 拆开书写（插入空格或改为行内描述）以避开提取器。
+> **后续（第二轮已修复）**：`docs/` 与源码注释中的可被误提取的类名字面量已全部脱敏改写，
+> 非法 CSS 规则不再生成，`npx playwright test` 恢复通过。
+> 另更正一处：本条称"唯一命中 `docs/REVIEW_DESIGN_INVENTORY.md`"不准确——
+> 本轮实测发现 `src/components/chart/WuxingBars.tsx` 的注释抄写了在同一构建日志中
+> 出现的解析器报错原文，构成**第二个触发点**。两处均已修复。
+> 详见 `docs/FIX_REPORT_ROUND2.md` §11。
 
 > **未验证**：未实际修改该文档验证警告消失（禁止修改本报告之外的文件）。
 
