@@ -12,6 +12,7 @@ import { Field, inputClass } from "./Field";
 import { StepProgress } from "./StepProgress";
 import { SolarDateField, BirthTimeField } from "./DateTimeFields";
 import { RegionSelect } from "./RegionSelect";
+import { isDraftChanged, useUnsavedChangesGuard } from "./unsaved-changes";
 
 const STEPS = ["姓名", "生日", "时辰", "性别地点", "在世与基准", "确认"] as const;
 
@@ -175,6 +176,10 @@ export function BirthWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  // B14：以挂载时的草稿为基准判断"有未提交输入"，改回原值不算脏。
+  // 用 useState 而非 ref 固化初值：ref 在渲染期读取违反 react-hooks/refs。
+  const [initialDraft] = useState(draftState);
 
   // 分析基准日默认取"今天"：预渲染期为 ""（保持静态外壳确定性），
   // 水合后由 useTodayISO 提供真实日期。用户填过则尊重用户值。
@@ -185,6 +190,10 @@ export function BirthWizard() {
   const setDraft = setDraftState;
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
+
+  useUnsavedChangesGuard(
+    !submitted && isDraftChanged(draftState, initialDraft),
+  );
 
   const validate = (s: number): boolean => {
     const e: Record<string, string> = {};
@@ -275,6 +284,8 @@ export function BirthWizard() {
       const chart = computeChart(p);
       saveProfile(p);
       saveChart(chart);
+      // 已落盘：解除离开确认，避免跳转过程被自己的守卫拦下
+      setSubmitted(true);
       router.push(`/chart/${p.id}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "排盘失败");
