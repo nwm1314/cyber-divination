@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
-import { assertSameOrigin } from "@/lib/api";
+import {
+  assertSameOrigin,
+  writeRejection,
+} from "@/lib/api";
 import { ErrorCode } from "@/lib/types";
 import {
   SESSION_COOKIE_NAME,
@@ -26,8 +29,25 @@ import { getUserById } from "@/lib/auth/users";
  *
  * 前端调用方见 src/components/account/AccountPanel.tsx。
  */
+function unauthorized() {
+  return NextResponse.json(
+    {
+      error: {
+        code: ErrorCode.AUTH_REQUIRED,
+        message: "请先登录后再导出云端数据",
+      },
+    },
+    { status: 401 },
+  );
+}
+
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.account.export");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.account.export",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
 
   const originErr = assertSameOrigin(request);
@@ -48,15 +68,7 @@ export async function POST(request: NextRequest) {
   const payload = verifySessionToken(token);
 
   if (!session.authenticated || !session.userId || !payload) {
-    return NextResponse.json(
-      {
-        error: {
-          code: ErrorCode.AUTH_REQUIRED,
-          message: "请先登录后再导出云端数据",
-        },
-      },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const now = Math.floor(Date.now() / 1000);

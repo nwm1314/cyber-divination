@@ -7,7 +7,13 @@ import {
   upsertCloudPerson,
 } from "@/lib/storage/cloud-person-store";
 import type { PersonInput } from "@/lib/types/user";
-import { parseJsonBody, assertSameOrigin, versionConflictResponse } from "@/lib/api";
+import {
+  assertSameOrigin,
+  parseJsonBody,
+  sessionRejection,
+  versionConflictResponse,
+  writeRejection,
+} from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
@@ -27,7 +33,12 @@ function unauthorized() {
 
 /** GET /api/people — 本人人物列表 */
 export async function GET(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.people.list");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.people.list",
+    () => sessionRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
@@ -41,7 +52,12 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/people — 创建/更新人物（userId 仅来自 session） */
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.people.create");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.people.create",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
 
   const originErr = assertSameOrigin(request);

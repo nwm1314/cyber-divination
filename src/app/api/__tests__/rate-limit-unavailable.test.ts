@@ -20,6 +20,9 @@ import { resetUserStoreForTests } from "@/lib/auth/users";
 import { createTestUser, makeRequest } from "@/test/api-helpers";
 import * as chartsRoute from "@/app/api/charts/route";
 import * as deleteRoute from "@/app/api/account/delete/route";
+import * as peopleRoute from "@/app/api/people/route";
+import * as ziweiRoute from "@/app/api/ziwei-charts/route";
+import * as shareRoute from "@/app/api/share/route";
 
 /** 模拟 Upstash 不可达：与 getaddrinfo ENOTFOUND 同形的传输错误 */
 function brokenLimiter() {
@@ -92,6 +95,35 @@ describe("限流后端不可用 · 可被服务的请求 fail-closed", () => {
       "api.charts.list",
     );
     expect(res?.status).toBe(503);
+  });
+});
+
+describe("其余要求登录的路由 · 同一策略已覆盖", () => {
+  beforeEach(() => setRateLimiterForTests(brokenLimiter()));
+
+  it("读路由匿名 → 401（不是裸 500）", async () => {
+    const res = await peopleRoute.GET(makeRequest("/api/people"));
+    expect(res.status).toBe(401);
+  });
+
+  it("写路由跨站 → 403（不是裸 500）", async () => {
+    const res = await ziweiRoute.POST(
+      makeRequest("/api/ziwei-charts", {
+        method: "POST",
+        origin: "http://evil.example",
+        body: {},
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("share 的限流在鉴权之后，故障时对已登录请求 fail-closed 503", async () => {
+    const res = await shareRoute.POST(
+      makeRequest("/api/share", { method: "POST", token, body: {} }),
+    );
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
   });
 });
 

@@ -5,7 +5,11 @@ import {
   deleteCloudChart,
   getCloudChart,
 } from "@/lib/storage/cloud-store";
-import { assertSameOrigin } from "@/lib/api";
+import {
+  assertSameOrigin,
+  sessionRejection,
+  writeRejection,
+} from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 function unauthorized() {
@@ -24,7 +28,12 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 /** GET /api/charts/[id] — 本人档案详情 */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const limited = await enforceRateLimit(request, "crud", "api.charts.get");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.charts.get",
+    () => sessionRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
@@ -63,7 +72,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /** DELETE /api/charts/[id] — 删除本人档案 */
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const limited = await enforceRateLimit(request, "crud", "api.charts.delete");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.charts.delete",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {

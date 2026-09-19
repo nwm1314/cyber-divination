@@ -5,7 +5,11 @@ import {
   deleteCloudLiuyao,
   getCloudLiuyao,
 } from "@/lib/storage/cloud-liuyao-store";
-import { assertSameOrigin } from "@/lib/api";
+import {
+  assertSameOrigin,
+  sessionRejection,
+  writeRejection,
+} from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 function unauthorized() {
@@ -24,7 +28,12 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** GET /api/liuyao-charts/[id] */
 export async function GET(request: NextRequest, ctx: Ctx) {
-  const limited = await enforceRateLimit(request, "crud", "api.liuyao.get");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.liuyao.get",
+    () => sessionRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
@@ -49,7 +58,12 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 
 /** DELETE /api/liuyao-charts/[id] */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
-  const limited = await enforceRateLimit(request, "crud", "api.liuyao.delete");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.liuyao.delete",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {

@@ -13,7 +13,11 @@ import {
   type MigrateResponseBody,
 } from "@/lib/storage/migrate";
 import type { CloudChartRecord } from "@/lib/storage/cloud-types";
-import { parseJsonBody, assertSameOrigin } from "@/lib/api";
+import {
+  assertSameOrigin,
+  parseJsonBody,
+  writeRejection,
+} from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { migrateBodySchema } from "@/lib/contracts";
 import { computeAuthoritativeChart } from "@/lib/bazi";
@@ -27,8 +31,25 @@ import type { BirthProfile } from "@/lib/types";
  * 响应：decisions + 需客户端写入的 pullRecords；永不删除任一侧档案。
  * userId 仅来自 session；忽略客户端伪造的 profile.userId。
  */
+function unauthorized() {
+  return NextResponse.json(
+    {
+      error: {
+        code: ErrorCode.AUTH_REQUIRED,
+        message: "请先登录后再迁移档案",
+      },
+    },
+    { status: 401 },
+  );
+}
+
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "crud", "api.charts.migrate");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.charts.migrate",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
@@ -46,15 +67,7 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
   if (!session.authenticated || !session.userId) {
-    return NextResponse.json(
-      {
-        error: {
-          code: ErrorCode.AUTH_REQUIRED,
-          message: "请先登录后再迁移档案",
-        },
-      },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const parsed = await parseJsonBody(request, migrateBodySchema);

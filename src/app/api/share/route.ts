@@ -16,8 +16,9 @@ import {
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import {
   assertSameOrigin,
-  checkRateLimit,
+  checkRateLimitOrRespond,
   clientKeyFromRequest,
+  isRateLimitResponse,
   logApi,
   parseJsonBody,
   rateLimitResponseHeaders,
@@ -135,7 +136,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rl = await checkRateLimit("share", clientKey);
+    const rl = await checkRateLimitOrRespond(
+      "share",
+      clientKey,
+      () => null,
+      "/api/share",
+    );
+    if (isRateLimitResponse(rl)) return rl;
     if (!rl.allowed) {
       logApi("warn", "api.rate_limited", {
         requestId,

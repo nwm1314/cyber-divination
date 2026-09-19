@@ -8,7 +8,13 @@ import {
   upsertCloudPerson,
   personBelongsToUser,
 } from "@/lib/storage/cloud-person-store";
-import { assertSameOrigin, parseJsonBody, versionConflictResponse } from "@/lib/api";
+import {
+  assertSameOrigin,
+  parseJsonBody,
+  sessionRejection,
+  versionConflictResponse,
+  writeRejection,
+} from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { logApi } from "@/lib/api/logger";
 import { toSafeErrorMessage } from "@/lib/api/safe-error";
@@ -30,7 +36,12 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 /** GET /api/people/[id] */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const limited = await enforceRateLimit(request, "crud", "api.people.get");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.people.get",
+    () => sessionRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionFromToken(token);
@@ -69,7 +80,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /** PUT /api/people/[id] — 全量更新（含关联 chartIds / ziweiIds） */
 export async function PUT(request: NextRequest, context: RouteContext) {
-  const limited = await enforceRateLimit(request, "crud", "api.people.put");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.people.put",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {
@@ -164,7 +180,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 /** DELETE /api/people/[id] */
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const limited = await enforceRateLimit(request, "crud", "api.people.delete");
+  const limited = await enforceRateLimit(
+    request,
+    "crud",
+    "api.people.delete",
+    () => writeRejection(request, unauthorized),
+  );
   if (limited) return limited;
   const originErr = assertSameOrigin(request);
   if (originErr) {

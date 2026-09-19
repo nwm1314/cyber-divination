@@ -14,6 +14,11 @@ export {
   type ParseBodyErr,
 } from "@/lib/api/parse-body";
 export { assertSameOrigin } from "@/lib/api/origin";
+export {
+  originRejection,
+  sessionRejection,
+  writeRejection,
+} from "@/lib/api/access";
 export { versionConflictResponse } from "@/lib/api/version-conflict";
 export {
   checkRateLimit,
