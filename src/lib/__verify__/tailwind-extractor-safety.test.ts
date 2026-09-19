@@ -31,7 +31,7 @@ const ROOT = process.cwd();
 /** 提取器会扫描的目录 */
 const SCAN_DIRS = ["src", "docs"];
 
-/** 跳过的路径（构建产物、依赖、本测试自身与其说明） */
+/** 跳过的路径（构建产物与依赖，非提取器扫描面） */
 const SKIP_PATTERNS = [
   /node_modules/,
   /\.next/,
@@ -70,8 +70,10 @@ async function collectFiles(dir: string): Promise<string[]> {
  * - 前缀后紧邻 `[`（中间可无字符）；
  * - 方括号内必须含 `*`。
  *
- * 例：`shadow-[0_0_*px_var(--*-glow)]`、`w-[0_0_*px]`（危险）
- * 反例：`majorByBranch[*]`、`daxian[0..1]`、`shadow-[0_0_8px_currentColor]`（安全）
+ * 危险样本 = 前缀 shadow- / w- 加一个内含 `*` 的方括号任意值；
+ * 安全反例 = JSON 字段路径 `majorByBranch[*]`、区间 `daxian[0..1]`、
+ * 以及不含通配符的具体值 `shadow-[0_0_8px_currentColor]`。
+ * 本文件自身的说明文字同样不得写出危险样本原文（见下方 SKIP 注释）。
  *
  * 注：正则以「前缀 + 连字符结尾」匹配 `before` 串（`before` 不含 `[`），
  * 因此结尾写 `-` 而非 `-\[`。
@@ -112,9 +114,8 @@ describe("Tailwind 提取器安全 · 禁止通配符任意值类名", () => {
 
     const offenders: string[] = [];
     for (const rel of files) {
-      // 本测试文件自身包含用于说明的示例字面量，跳过以免自我命中
-      if (rel.endsWith("tailwind-extractor-safety.test.ts")) continue;
-
+      // 不豁免本文件：Tailwind 提取器同样会扫描它。上一版在此写了示例字面量
+      // 并自我豁免，结果守护自身成了新的污染源（dev/e2e 整站样式再次失败）。
       const content = await fs.readFile(path.join(ROOT, rel), "utf-8");
       const hits = findDangerousMatches(content);
       for (const h of hits) {
@@ -131,17 +132,22 @@ describe("Tailwind 提取器安全 · 禁止通配符任意值类名", () => {
   });
 
   it("检测器自身有效：能识别危险样本、不误报字段路径", () => {
-    // 危险样本：曾被 true 命中并导致 e2e 全站失败
-    const bad = findDangerousMatches(
-      'className="shadow-[0_0_' + '*px_var(--' + '*-glow)]"',
-    );
-    expect(bad.length).toBe(1);
+    /**
+     * 危险样本在运行时拼装。本文件也在 Tailwind 提取器的扫描面内，
+     * 一旦源码里出现连续的「工具类前缀 + 方括号 + 通配符」字面量，
+     * 就会生成非法 CSS 让 dev/e2e 整站样式失败——守护不能自己是污染源。
+     */
+    const LBRACKET = "[";
+    const RBRACKET = "]";
+    const WILDCARD = "*";
+    const shadowSample = `className="shadow-${LBRACKET}0_0_${WILDCARD}px_var(--${WILDCARD}-glow${RBRACKET}"`;
+    const widthSample = `className="w-${LBRACKET}0_0_${WILDCARD}px${RBRACKET}"`;
 
-    const bad2 = findDangerousMatches('className="w-[0_0_' + '*px]"');
-    expect(bad2.length).toBe(1);
+    expect(findDangerousMatches(shadowSample).length).toBe(1);
+    expect(findDangerousMatches(widthSample).length).toBe(1);
 
     // 安全样本：JSON 字段路径与具体值不应命中
-    expect(findDangerousMatches('"majorByBranch[*]",')).toEqual([]);
+    expect(findDangerousMatches('"majorByBranch' + LBRACKET + WILDCARD + RBRACKET + '",')).toEqual([]);
     expect(findDangerousMatches("daxian[0..1].{startAge,endAge}")).toEqual([]);
     expect(
       findDangerousMatches('className="shadow-[0_0_8px_currentColor]"'),
