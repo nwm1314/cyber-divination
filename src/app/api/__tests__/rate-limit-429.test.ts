@@ -95,13 +95,29 @@ describe("限流 · GET /api/people（新覆盖 handler）", () => {
   });
 });
 
-describe("限流 · GET /api/account/export（新覆盖 handler）", () => {
+describe("限流 · POST /api/account/export（新覆盖 handler）", () => {
   it("超过阈值 → 429 且带 Retry-After", async () => {
-    await exportRoute.GET(makeRequest("/api/account/export", { token }));
-    await exportRoute.GET(makeRequest("/api/account/export", { token }));
+    await exportRoute.POST(
+      makeRequest("/api/account/export", {
+        method: "POST",
+        token,
+        body: {},
+      }),
+    );
+    await exportRoute.POST(
+      makeRequest("/api/account/export", {
+        method: "POST",
+        token,
+        body: {},
+      }),
+    );
 
-    const limited = await exportRoute.GET(
-      makeRequest("/api/account/export", { token }),
+    const limited = await exportRoute.POST(
+      makeRequest("/api/account/export", {
+        method: "POST",
+        token,
+        body: {},
+      }),
     );
     expect(limited.status).toBe(429);
     expectRateLimitHeaders(limited);

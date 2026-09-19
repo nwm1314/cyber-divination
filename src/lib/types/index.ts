@@ -305,6 +305,14 @@ export type BaziChart = {
       historicalDst: boolean;
     };
     provenance?: BaziSkillProvenance;
+    /**
+     * 输入指纹（统一引擎信封 · GAP-5）
+     *
+     * 只由**输入**（出生档案字段）决定，不含任何派生结果。
+     * 用途：用户复算自证「同一输入 → 同一个盘」；两份盘的差异对照。
+     * 算法见 src/lib/engine-envelope/fingerprint.ts。
+     */
+    inputFingerprint?: string;
   };
 };
 

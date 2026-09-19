@@ -33,6 +33,7 @@ import {
 } from "./policy";
 import { BAZI_SKILL_PROVENANCE } from "./references/manifest";
 import { computeYongshen } from "./yongshen";
+import { computeInputFingerprint } from "@/lib/engine-envelope/fingerprint";
 
 export const ENGINE_VERSION = BAZI_ENGINE_VERSION;
 export const SKILL_REF = "bazi-skill" as const;
@@ -203,6 +204,30 @@ export function computeChart(profile: BirthProfile): BaziChart {
   };
   // 严格日期校验（含非法日）
   parseSolarDate(solarDate);
+
+  // 输入指纹（GAP-5）：只哈希**输入**字段，不含任何派生结果，
+  // 使「同一输入 → 同一个盘」可被用户复算自证。
+  // 注意在真太阳时推导之前计算：用户提交的原始档案才是权威输入。
+  const inputFingerprint = computeInputFingerprint("bazi", {
+    solarDate: profile.solarDate,
+    birthTime: profile.birthTime ?? null,
+    shichenUnknown: profile.shichenUnknown,
+    gender: profile.gender,
+    alive: profile.alive,
+    analysisBaseDate: profile.analysisBaseDate,
+    useTrueSolarTime: profile.useTrueSolarTime,
+    birthPlace: profile.birthPlace
+      ? {
+          province: profile.birthPlace.province,
+          city: profile.birthPlace.city,
+          lng: profile.birthPlace.lng ?? null,
+          lat: profile.birthPlace.lat ?? null,
+        }
+      : null,
+    deathYear: profile.deathYear ?? null,
+    lunarDate: profile.lunarDate ?? null,
+    isLeapMonth: profile.isLeapMonth ?? null,
+  });
 
   let effectiveSolarDate = solarDate;
   let effectiveBirthTime = profile.birthTime;
@@ -453,6 +478,7 @@ export function computeChart(profile: BirthProfile): BaziChart {
       school: BAZI_SCHOOL,
       calendarPolicy: { ...DEFAULT_CALENDAR_POLICY },
       provenance: BAZI_SKILL_PROVENANCE,
+      inputFingerprint,
     },
   };
 

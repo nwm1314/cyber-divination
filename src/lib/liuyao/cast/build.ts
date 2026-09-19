@@ -20,8 +20,12 @@ import {
   methodNoteOf,
 } from "./method";
 import { LIUYAO_DATA_SOURCES } from "../data/sources";
+import { computeInputFingerprint } from "@/lib/engine-envelope/fingerprint";
 
 export const LIUYAO_ENGINE_VERSION = "0.5.0";
+
+/** 数据结构版本（统一引擎信封 · GAP-4） */
+export const LIUYAO_SCHEMA_VERSION = "liuyao-schema-1.0.0";
 
 export type BuildChartParams = {
   question: string;
@@ -56,8 +60,53 @@ export function buildDefaultMeta(
     timezone: extra?.timezone ?? DEFAULT_CAST_TIMEZONE,
     methodNote: methodNoteOf(method),
     dataVersion: LIUYAO_DATA_SOURCES.dataVersion,
+    // 统一引擎信封（GAP-4）：与八字/紫微对齐，
+    // 使 TrustPanel 能拿到版本与规则集信息。
+    schemaVersion: LIUYAO_SCHEMA_VERSION,
+    ruleSetVersion: LIUYAO_DATA_SOURCES.ruleSetVersion,
     ...(extra?.replaySeed != null ? { replaySeed: extra.replaySeed } : {}),
+    ...(extra?.inputFingerprint
+      ? { inputFingerprint: extra.inputFingerprint }
+      : {}),
   };
+}
+
+/**
+ * 方法来源边界警告（GAP-4）
+ *
+ * 时间起卦是**混合方法**：梅花易数先天数定上下卦与动爻，再进入京房纳甲
+ * 六爻分析。两者本非同一体系，混用必须对用户明示，否则会让用户
+ * 误以为得到的是单一流派的结论。
+ */
+export function buildCastingWarnings(
+  method: LiuyaoMethod,
+  opts: { castAt?: string; shichenUnknown?: boolean } = {},
+): string[] {
+  const warnings: string[] = [];
+
+  if (method === "time") {
+    warnings.push(
+      "本卦采用梅花易数先天数起卦，再入纳甲六爻分析，属混合方法（非单一师承）；结论宜作参考而非定论。",
+    );
+  }
+  if (method === "manual") {
+    warnings.push(
+      "六爻由手工指定，未经过随机起卦过程；请自行确认输入是否与所求之事对应。",
+    );
+  }
+  if (method === "coins") {
+    warnings.push(
+      "铜钱起卦依赖随机数；请以起卦当时的诚心与所问事项为准，同一问题不宜反复重起。",
+    );
+  }
+
+  if (!opts.castAt) {
+    warnings.push(
+      "缺占时：无法计算日辰、月建、旬空与月破，应期提示与旺衰判断不完整。",
+    );
+  }
+
+  return warnings;
 }
 
 /** 由六爻值组装 LiuyaoChart（含世应/用神，T112 + T280/T281） */
@@ -71,7 +120,24 @@ export function buildChart(params: BuildChartParams): LiuyaoChart {
     bianGua = resolveGuaRef(toBinary(toBianValues(params.values)));
   }
 
-  const meta = buildDefaultMeta(params.method, params.meta);
+  // 输入指纹（GAP-5）：只哈希输入——所问事项、起卦方法、六个爻值、占时、
+  // 问事类别与用神确认。爻值数组保序（爻位顺序是语义）。
+  const inputFingerprint = computeInputFingerprint("liuyao", {
+    question: params.question,
+    method: params.method,
+    values: [...params.values],
+    castAt: params.castAt ?? null,
+    questionCategory: params.questionCategory ?? null,
+    yongShenConfirm: params.yongShenConfirm ?? null,
+  });
+
+  const meta = buildDefaultMeta(params.method, {
+    ...params.meta,
+    inputFingerprint,
+  });
+  const warnings = buildCastingWarnings(params.method, {
+    castAt: params.castAt,
+  });
 
   const raw: LiuyaoChart = {
     id: params.id ?? newId(),
@@ -90,6 +156,7 @@ export function buildChart(params: BuildChartParams): LiuyaoChart {
       : {}),
     shiYao: 0,
     yingYao: 0,
+    warnings,
     meta,
   };
   return enrichChart(raw);

@@ -3,6 +3,9 @@
  * 用法：NODE_ENV=production node scripts/validate-prod-env.mjs
  * 或：npm run check:prod-env
  *
+ * 非 production 环境下**默认直接失败**（P2 A6 修复：此前静默跳过，
+ * 使本地/CI 默认路径下该校验形同虚设）。如需本地演练加 --force。
+ *
  * 逻辑与 src/lib/config/validate-prod.ts 对齐（纯 Node，无 TS 路径别名）。
  */
 
@@ -200,10 +203,29 @@ function validateRateLimitConfig(errors) {
 
 function validateProductionConfig() {
   if (!isProduction()) {
-    console.log(
-      "[check:prod-env] NODE_ENV 非 production，跳过校验（部署前请设 NODE_ENV=production）",
+    // 修复（P2 A6）：此前在非生产环境**静默跳过**全部校验，
+    // 而 npm run check:prod-env 的默认路径（本地/CI 未设 NODE_ENV）
+    // 正是非生产 → 该校验形同虚设，无法在部署前发现问题。
+    //
+    // 现改为 fail-fast：明确要求以 NODE_ENV=production 运行。
+    // 若确需在非生产下"演练"校验，可显式传 --force
+    // （校验按生产规则执行，但会提示 NODE_ENV 并非 production）。
+    const forced = process.argv.includes("--force");
+    if (!forced) {
+      console.error(
+        "[check:prod-env] NODE_ENV 非 production，拒绝以非生产模式静默通过。",
+      );
+      console.error(
+        "  部署前校验请运行：NODE_ENV=production node scripts/validate-prod-env.mjs",
+      );
+      console.error(
+        "  如需在本地按生产规则演练，请显式加 --force：node scripts/validate-prod-env.mjs --force",
+      );
+      process.exit(1);
+    }
+    console.warn(
+      "[check:prod-env] 警告：NODE_ENV 非 production（--force 已生效），以下按生产规则校验。",
     );
-    return;
   }
 
   const errors = [];

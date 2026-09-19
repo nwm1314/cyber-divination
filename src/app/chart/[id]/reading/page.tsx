@@ -319,6 +319,7 @@ function ReadingPageInner() {
               skillRef={chart.meta?.skillRef}
               warnings={report.warnings ?? chart.warnings}
               evidence={report.evidence ?? chart.evidence}
+              inputFingerprint={chart.meta?.inputFingerprint}
               methodNote="八字：调候/扶抑等规则由引擎生成 evidence，LLM 不得发明 ruleId。"
             />
 

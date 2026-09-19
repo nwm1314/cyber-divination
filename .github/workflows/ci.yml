@@ -56,6 +56,31 @@ jobs:
       - name: Verify prerender budget (static routes >= 15)
         run: npm run check:prerender
 
+      # P2 A6 修复：此前 check:prod-env 在非 production 下静默跳过，
+      # 且 CI 从未调用它 → 生产配置错误无法在合并前暴露。
+      # 这里显式以 production 模式运行，并补一份「合规样例环境」，
+      # 断言校验器本身能通过（防止校验器误报导致部署阻塞）。
+      - name: Verify production env validator fails closed
+        run: |
+          if node scripts/validate-prod-env.mjs 2>/dev/null; then
+            echo "::error::check:prod-env 在非 production 下不应静默通过"
+            exit 1
+          fi
+          echo "OK: 非 production 下 fail-closed"
+
+      - name: Verify production env validator accepts a compliant config
+        env:
+          NODE_ENV: production
+          AUTH_SECRET: Zx9pQ2mVt7Lk4Rw8Bn3Hy6Jd1Fg5Cs0Ae2Uo9Pi4Xz7Vb3Nq8Mt5Ky
+          CLOUD_STORE_DRIVER: postgres
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          SHARE_STORE_DRIVER: upstash
+          UPSTASH_REDIS_REST_URL: https://ci.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: ci-token
+          RATE_LIMIT_DRIVER: redis
+          RATE_LIMIT_TRUSTED_PROXY: '0'
+        run: npm run check:prod-env
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

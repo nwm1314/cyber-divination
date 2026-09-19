@@ -5,6 +5,7 @@
  */
 
 import type { UserId } from "./user";
+import type { RuleEvidence } from "./index";
 
 /** 起卦方式：铜钱 / 时间 / 手动指定 */
 export type LiuyaoMethod = "coins" | "time" | "manual";
@@ -100,7 +101,7 @@ export type GuaRef = {
   lower: string;
 };
 
-/** 装卦 meta（T280） */
+/** 装卦 meta（T280 + GAP-4 统一引擎信封） */
 export type LiuyaoChartMeta = {
   engineVersion: string;
   /** 装卦流派；时间法必须为 meihua-time-to-najia */
@@ -115,6 +116,22 @@ export type LiuyaoChartMeta = {
   methodNote?: string;
   /** 规则/数据版本锚点 */
   dataVersion?: string;
+  /**
+   * 数据结构版本（统一引擎信封 · GAP-4）
+   *
+   * 此前六爻 meta 只有 engineVersion + castingSchool 两个字段，
+   * 与八字/紫微的信封不一致，导致 TrustPanel 拿不到版本信息。
+   */
+  schemaVersion?: string;
+  /** 规则集版本（统一引擎信封 · GAP-4） */
+  ruleSetVersion?: string;
+  /**
+   * 输入指纹（统一引擎信封 · GAP-5）
+   *
+   * 只由**输入**（所问事项 + 起卦方法 + 爻值 + 占时）决定，不含派生结果。
+   * 用途：用户复算自证「同一输入 → 同一卦」。
+   */
+  inputFingerprint?: string;
 };
 
 /**
@@ -175,6 +192,19 @@ export type LiuyaoChart = {
    * 依赖动爻/用神支与日辰月建；无占时则为缺省说明
    */
   yingQiHint?: string;
+  /**
+   * 边界 / 缺失 / 混合方法警告（统一引擎信封 · GAP-4）
+   *
+   * 六爻最需要标注方法来源（时间法为梅花易数先天数 + 纳甲混合）
+   * 却此前完全没有 warnings 出口。
+   */
+  warnings?: string[];
+  /**
+   * 规则证据链（统一引擎信封 · GAP-4）
+   *
+   * 与八字/紫微对齐，使 TrustPanel 能在六爻解读页展示规则来源。
+   */
+  evidence?: RuleEvidence[];
   meta: LiuyaoChartMeta;
 };
 

@@ -4,7 +4,7 @@ import type { RuleEvidence } from "@/lib/types";
 import { Card } from "@/components/ui";
 
 export type TrustPanelProps = {
-  /** plain：仅关键限制；pro：流派/版本/证据 */
+  /** plain：仅关键限制；pro：流派/版本/证据全部展开 */
   viewMode?: "plain" | "pro";
   title?: string;
   school?: string;
@@ -14,12 +14,26 @@ export type TrustPanelProps = {
   evidence?: RuleEvidence[];
   /** 额外方法说明 */
   methodNote?: string;
+  /**
+   * 输入指纹（GAP-5）。
+   *
+   * 展示给用户后可自证「同一输入 → 同一个盘」：两次排盘若指纹一致，
+   * 说明输入与算法版本都未被改动。
+   */
+  inputFingerprint?: string;
 };
 
 /**
  * T292 · 可信度/方法说明
- * - 通俗模式：不隐藏关键限制（warnings + 方法边界）
- * - 专业模式：显示流派、引擎版本、evidence
+ *
+ * - 通俗模式：关键限制（warnings + 方法边界）**始终可见**；
+ *   规则证据（evidence）以折叠入口提供，默认收起、点击展开。
+ * - 专业模式：流派、引擎版本、evidence 全部直接展开。
+ *
+ * 修复（P2 A1）：此前 evidence 仅在 `pro && hasEvidence` 时渲染，
+ * 通俗模式下用户完全看不到规则来源——而通俗模式是默认路径，
+ * 这使「规则可溯源」这一信任机制在默认路径上失效。
+ * 现改为默认模式也提供折叠入口（用原生 <details> 保证键盘可达性）。
  */
 export function TrustPanel({
   viewMode = "plain",
@@ -30,6 +44,7 @@ export function TrustPanel({
   warnings,
   evidence,
   methodNote,
+  inputFingerprint,
 }: TrustPanelProps) {
   const hasWarnings = Boolean(warnings?.length);
   const hasEvidence = Boolean(evidence?.length);
@@ -76,6 +91,18 @@ export function TrustPanel({
           </dl>
         )}
 
+        {inputFingerprint ? (
+          <div className="text-xs">
+            <span className="text-muted">输入指纹：</span>
+            <span
+              className="font-mono text-foreground/90 break-all"
+              title="同一输入始终得到同一指纹；指纹变化说明输入或规则集发生了变化"
+            >
+              {inputFingerprint}
+            </span>
+          </div>
+        ) : null}
+
         {hasWarnings ? (
           <div>
             <h4 className="text-xs font-semibold text-danger mb-1">边界警告</h4>
@@ -92,34 +119,30 @@ export function TrustPanel({
             </ul>
           </div>
         ) : (
-          <p className="text-xs text-muted/90">当前无边界警告。</p>
+          // 修复（P2 A2）：原为「当前无边界警告。」——在无证据/未做完整
+          // 边界检查时，这句话会制造**虚假安心**。改为陈述本盘的实际状态，
+          // 并明确「无警告 ≠ 无风险」。
+          <p className="text-xs text-muted/90">
+            本盘未触发已知边界警告；这不表示结论没有不确定性，实际判断仍需结合现实情况。
+          </p>
         )}
+
+        {/* 证据链：专业模式直接展开；通俗模式提供折叠入口（键盘可达） */}
+        {hasEvidence && !pro ? (
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-semibold text-gold hover:text-gold/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan rounded">
+              查看盘面规则证据（{evidence!.length} 条）
+            </summary>
+            <EvidenceList items={evidence!} />
+          </details>
+        ) : null}
 
         {pro && hasEvidence ? (
           <div>
             <h4 className="text-xs font-semibold text-gold mb-1">
               盘面规则证据（chart evidence）
             </h4>
-            <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {evidence!.slice(0, 12).map((e) => (
-                <li
-                  key={`${e.ruleId}-${e.conclusion}`}
-                  className="rounded-md border border-border/40 bg-surface/40 p-2 text-xs space-y-0.5"
-                >
-                  <div className="font-mono text-cyan/90">{e.ruleId}</div>
-                  <div className="text-foreground/90">{e.conclusion}</div>
-                  <div className="text-muted">
-                    来源：{e.source}
-                    {typeof e.confidence === "number"
-                      ? ` · 置信 ${Math.round(e.confidence * 100)}%`
-                      : ""}
-                  </div>
-                  {e.condition ? (
-                    <div className="text-muted/90">适用条件：{e.condition}</div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <EvidenceList items={evidence!} />
           </div>
         ) : null}
 
@@ -130,5 +153,30 @@ export function TrustPanel({
         ) : null}
       </div>
     </Card>
+  );
+}
+
+function EvidenceList({ items }: { items: RuleEvidence[] }) {
+  return (
+    <ul className="space-y-2 max-h-48 overflow-y-auto pr-1 mt-2">
+      {items.slice(0, 12).map((e) => (
+        <li
+          key={`${e.ruleId}-${e.conclusion}`}
+          className="rounded-md border border-border/40 bg-surface/40 p-2 text-xs space-y-0.5"
+        >
+          <div className="font-mono text-cyan/90">{e.ruleId}</div>
+          <div className="text-foreground/90">{e.conclusion}</div>
+          <div className="text-muted">
+            来源：{e.source}
+            {typeof e.confidence === "number"
+              ? ` · 置信 ${Math.round(e.confidence * 100)}%`
+              : ""}
+          </div>
+          {e.condition ? (
+            <div className="text-muted/90">适用条件：{e.condition}</div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }

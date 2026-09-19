@@ -25,7 +25,12 @@ import {
   randomSourceOf,
 } from "./method";
 
-export { LIUYAO_ENGINE_VERSION, buildDefaultMeta } from "./build";
+export {
+  LIUYAO_ENGINE_VERSION,
+  LIUYAO_SCHEMA_VERSION,
+  buildDefaultMeta,
+  buildCastingWarnings,
+} from "./build";
 export { createSeededRng, hashSeed } from "./rng";
 export { castCoinsLines, castOneYao, freshCoinSeed } from "./coins";
 export {

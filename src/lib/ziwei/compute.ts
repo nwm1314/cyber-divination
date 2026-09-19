@@ -11,6 +11,7 @@ import type {
   ZiweiPalaceName,
 } from "@/lib/types/ziwei";
 import { resolveBirthContext } from "./calendar";
+import { computeInputFingerprint } from "@/lib/engine-envelope/fingerprint";
 import { computeDaxian } from "./daxian";
 import {
   buildTwelvePalaces,
@@ -84,6 +85,7 @@ function parseBaseDate(analysisBaseDate?: string): {
 
 function buildMeta(opts: {
   shichenUnknown: boolean;
+  inputFingerprint?: string;
 }): ZiweiChart["meta"] {
   return {
     engineVersion: ENGINE_VERSION,
@@ -103,6 +105,9 @@ function buildMeta(opts: {
     timePolicy: opts.shichenUnknown
       ? TIME_POLICY_UNKNOWN_MULTI
       : TIME_POLICY_SHICHEN,
+    ...(opts.inputFingerprint
+      ? { inputFingerprint: opts.inputFingerprint }
+      : {}),
   };
 }
 
@@ -192,6 +197,31 @@ export function computeZiweiChart(input: ZiweiChartInput): ZiweiChart {
     input.shichenUnknown === true ||
     input.birthTime == null ||
     input.birthTime === "";
+
+  // 输入指纹（GAP-5）：只哈希输入字段，不含任何派生结果。
+  // 刻意**排除** personId/profileId/userId/name 等身份与展示字段：
+  // 它们不影响排盘事实，若纳入则「同一出生信息、不同档案名」会得到
+  // 不同指纹，破坏「同一输入 → 同一个盘」的可自证语义。
+  const inputFingerprint = computeInputFingerprint("ziwei", {
+    solarDate: input.solarDate ?? null,
+    lunarDate: input.lunarDate ?? null,
+    isLeapMonth: input.isLeapMonth ?? null,
+    birthTime: input.birthTime ?? null,
+    shichenUnknown: input.shichenUnknown ?? null,
+    gender: input.gender,
+    useTrueSolarTime: input.useTrueSolarTime ?? null,
+    analysisBaseDate: input.analysisBaseDate ?? null,
+    alive: input.alive ?? null,
+    deathYear: input.deathYear ?? null,
+    birthPlace: input.birthPlace
+      ? {
+          province: input.birthPlace.province,
+          city: input.birthPlace.city,
+          lng: input.birthPlace.lng ?? null,
+          lat: input.birthPlace.lat ?? null,
+        }
+      : null,
+  });
 
   const ctx = resolveBirthContext({
     solarDate: input.solarDate,
@@ -353,6 +383,6 @@ export function computeZiweiChart(input: ZiweiChartInput): ZiweiChart {
     ...(hourCandidates ? { hourCandidates } : {}),
     ...(warnings.length ? { warnings } : {}),
     flags,
-    meta: buildMeta({ shichenUnknown }),
+    meta: buildMeta({ shichenUnknown, inputFingerprint }),
   };
 }

@@ -9,6 +9,7 @@ import type {
   LiuyaoQuestionCategory,
   YaoPosition,
 } from "@/lib/types/liuyao";
+import type { RuleEvidence } from "@/lib/types";
 import { toBinary, toBianValues, isChanging } from "../cast/yao";
 import { resolveGuaRef } from "../cast/resolve-gua";
 import type { YaoValue } from "@/lib/types/liuyao";
@@ -338,5 +339,124 @@ export function enrichChart(chart: LiuyaoChart): LiuyaoChart {
   } else {
     delete next.bianGua;
   }
+  next.evidence = buildLiuyaoEvidence(next, a);
   return next;
+}
+
+/**
+ * 六爻规则证据链（GAP-4）
+ *
+ * 与八字/紫微对齐，使 TrustPanel 能在六爻页面展示「这条结论由哪条规则得出、
+ * 来源是什么」。只描述**已实际应用**的规则，不虚构未实现的规则
+ * （未覆盖项见 analyze/scope.ts 的 LIUYAO_UNSUPPORTED_RULES）。
+ */
+function buildLiuyaoEvidence(
+  chart: LiuyaoChart,
+  a: LiuyaoAnalysis,
+): RuleEvidence[] {
+  const items: RuleEvidence[] = [];
+
+  // 世应定位
+  items.push({
+    ruleId: "liuyao.shi_ying.v1",
+    source: "京房八宫世应表（analyze/palaces.ts + shi-ying.ts）",
+    conclusion: `世爻在第 ${chart.shiYao} 爻，应爻在第 ${chart.yingYao} 爻`,
+    confidence: 1,
+    condition: "按本卦所属八宫与卦位定世应",
+  });
+
+  // 六亲（京房纳甲）
+  if (chart.lines.some((l) => l.liuqin)) {
+    items.push({
+      ruleId: "liuyao.liuqin.najia.v1",
+      source:
+        "京房纳甲六亲：内外卦纳支 → 爻支五行，与宫五行生克定六亲（analyze/liuqin.ts）",
+      conclusion: "六亲按京房纳甲由爻支五行与宫五行生克定出",
+      confidence: 1,
+    });
+  }
+
+  // 六神（需日干）
+  if (a.castCtx?.dayStem && chart.lines.some((l) => l.liushen)) {
+    items.push({
+      ruleId: "liuyao.liushen.v1",
+      source: "按日干起六神：甲乙起青龙…壬癸起玄武，初爻顺排（analyze/liushen.ts）",
+      conclusion: `六神依日干「${a.castCtx.dayStem}」自初爻起顺排`,
+      confidence: 1,
+      condition: "需已知占时以确定日干",
+    });
+  }
+
+  // 用神
+  if (chart.yongShen) {
+    items.push({
+      ruleId: "liuyao.yongshen.v1",
+      source: "问事关键词 + 类别映射表（analyze/yongshen.ts / yongshen-category.ts）",
+      conclusion: `用神取「${chart.yongShen}」，落第 ${chart.yongShenYao ?? "-"} 爻`,
+      confidence: a.yongShenFallbackShi ? 0.5 : 0.8,
+      condition: a.yongShenFallbackShi
+        ? "关键词未命中六亲，回落世爻（置信降低）"
+        : a.questionCategory
+          ? `问事类别 ${a.questionCategory}`
+          : "关键词命中",
+    });
+  }
+
+  // 旬空 / 月建 / 日辰（需占时）
+  if (a.castCtx) {
+    items.push({
+      ruleId: "liuyao.kongwang.v1",
+      source: "日辰六十甲子旬空表（analyze/kongwang.ts）",
+      conclusion: `日辰 ${a.castCtx.dayGanZhi}，旬空 ${a.castCtx.xunKong[0]}${a.castCtx.xunKong[1]}`,
+      confidence: 1,
+      condition: "需已知占时",
+    });
+    items.push({
+      ruleId: "liuyao.yuejian.v1",
+      source: "占时所属节气月建（analyze/yingqi.ts）",
+      conclusion: `月建为 ${a.castCtx.yueJian}`,
+      confidence: 1,
+    });
+  }
+
+  // 月破 / 日冲
+  if (chart.lines.some((l) => l.yuePo || l.riChong)) {
+    const yuePo = chart.lines.filter((l) => l.yuePo).map((l) => l.yao);
+    const riChong = chart.lines.filter((l) => l.riChong).map((l) => l.yao);
+    const parts: string[] = [];
+    if (yuePo.length) parts.push(`第 ${yuePo.join("、")} 爻月破`);
+    if (riChong.length) parts.push(`第 ${riChong.join("、")} 爻日冲`);
+    items.push({
+      ruleId: "liuyao.yuepo.v1",
+      source: "爻支冲月建为月破、冲日支为日冲（analyze/yuepo.ts）",
+      conclusion: parts.join("；"),
+      confidence: 1,
+      condition: "需已知占时",
+    });
+  }
+
+  // 伏神
+  if (chart.lines.some((l) => l.fushen)) {
+    items.push({
+      ruleId: "liuyao.fushen.v1",
+      source: "用神六亲不现时求本宫首卦同位取伏神（analyze/fushen.ts）",
+      conclusion: "用神六亲不现于本卦，按本宫首卦同位挂伏神",
+      confidence: 0.8,
+    });
+  }
+
+  // 动变
+  const changing = chart.lines.filter((l) => isChanging(l.value)).length;
+  if (changing > 0) {
+    items.push({
+      ruleId: "liuyao.dongbian.v1",
+      source:
+        "动爻与变爻五行生克（analyze/dongbian.ts）；进退神/反伏吟未覆盖，见 analyze/scope.ts",
+      conclusion: `本卦有 ${changing} 个动爻，化出${chart.bianGua?.name ?? "变卦"}`,
+      confidence: 0.8,
+      condition: "仅五行层回头生克；不含进退神、空破冲合转换",
+    });
+  }
+
+  return items;
 }

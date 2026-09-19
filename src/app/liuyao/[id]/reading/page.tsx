@@ -21,6 +21,7 @@ import {
   SectionCard,
   ReportHeader,
   DisclaimerFooter,
+  TrustPanel,
 } from "@/components/reading";
 import { Button } from "@/components/ui";
 import { LiuyaoShareSheet } from "@/components/share";
@@ -195,7 +196,9 @@ function LiuyaoReadingPageInner() {
   if (templateReport === null && !report) {
     return (
       <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
-        <p className="text-danger">{error ?? "模板渲染失败"}</p>
+        <p className="text-danger" role="alert">
+          {error ?? "模板渲染失败"}
+        </p>
       </div>
     );
   }
@@ -238,6 +241,19 @@ function LiuyaoReadingPageInner() {
           <div className="space-y-4 sm:space-y-5">
             <GuestBanner />
             <LiuyaoShareSheet chart={chart} report={report} />
+
+            {/* GAP-4：此前六爻解读页完全不渲染 TrustPanel，
+                用户看不到起卦流派（时间法为梅花易数+纳甲混合）、
+                方法来源与任何边界警告——而六爻最需要标注方法来源。 */}
+            <TrustPanel
+              viewMode={viewMode}
+              school={report.school ?? chart.meta?.castingSchool}
+              engineVersion={report.engineVersion ?? chart.meta?.engineVersion}
+              warnings={report.warnings ?? chart.warnings}
+              evidence={chart.evidence}
+              inputFingerprint={chart.meta?.inputFingerprint}
+              methodNote="六爻：起卦方法与规则版本由引擎透传；解读不发明卦象事实。"
+            />
 
             {sections.map((section, i) => (
               <SectionCard

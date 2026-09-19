@@ -198,7 +198,9 @@ function ZiweiReadingPageInner() {
   if (templateReport === null && !report) {
     return (
       <div className="flex flex-1 flex-col cyber-grid min-h-dvh items-center justify-center">
-        <p className="text-danger">{error ?? "模板渲染失败"}</p>
+        <p className="text-danger" role="alert">
+          {error ?? "模板渲染失败"}
+        </p>
       </div>
     );
   }
@@ -248,6 +250,7 @@ function ZiweiReadingPageInner() {
               engineVersion={report.engineVersion ?? chart.meta?.engineVersion}
               skillRef={chart.meta?.skillRef}
               warnings={report.warnings ?? chart.warnings}
+              inputFingerprint={chart.meta?.inputFingerprint}
               methodNote="紫微：流派/版本由引擎透传；解读不发明安星事实。"
             />
 

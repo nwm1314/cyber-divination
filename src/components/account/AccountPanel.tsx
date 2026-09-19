@@ -41,8 +41,13 @@ export function AccountPanel({ session }: Props) {
     setErr(null);
     setMsg(null);
     try {
+      // P2 A8：导出接口由 GET 改为 POST（带同源校验与近期认证要求），
+      // 以避免跨站 GET 导航触发全量数据导出。
       const res = await fetch("/api/account/export", {
+        method: "POST",
         credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
       });
       const data = (await res.json()) as {
         error?: { message?: string };

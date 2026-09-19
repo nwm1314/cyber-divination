@@ -321,6 +321,13 @@ export type ZiweiChart = {
     calendarPolicy?: string;
     /** 时辰策略 */
     timePolicy?: string;
+    /**
+     * 输入指纹（统一引擎信封 · GAP-5）
+     *
+     * 只由**输入**（出生档案字段）决定，不含任何派生结果。
+     * 用途：用户复算自证「同一输入 → 同一个盘」；两份盘的差异对照。
+     */
+    inputFingerprint?: string;
   };
 };
 
