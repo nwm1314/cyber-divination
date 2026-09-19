@@ -6,6 +6,7 @@ import {
   deleteCloudPerson,
   getCloudPerson,
   upsertCloudPerson,
+  personBelongsToUser,
 } from "@/lib/storage/cloud-person-store";
 import { assertSameOrigin, parseJsonBody } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/api/rate-limit";
@@ -99,6 +100,22 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         },
       },
       { status: 400 },
+    );
+  }
+
+  // 越权防护（IDOR）：PUT 语义是「更新已存在的人物」，
+  // 因此 id 必须已属于当前会话用户。此前直接 upsertCloudPerson(session.userId, {id})，
+  // 导致任意登录用户可用他人 id 创建/占用同 id 记录（资源命名空间污染）。
+  // 返回「不存在或无权访问」而非「无权」：不泄露该 id 是否真实存在。
+  if (!(await personBelongsToUser(session.userId, id))) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ErrorCode.NOT_FOUND,
+          message: "人物不存在或无权访问",
+        },
+      },
+      { status: 404 },
     );
   }
 

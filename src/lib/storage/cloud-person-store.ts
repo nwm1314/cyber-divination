@@ -128,6 +128,20 @@ export async function upsertCloudPerson(
   return person;
 }
 
+/**
+ * 该 id 是否已属于此用户。
+ *
+ * 用于 `PUT /api/people/[id]` 的越权防护：PUT 语义是更新已存在记录，
+ * 调用方必须先通过本函数确认归属，否则任意登录用户可凭他人 id
+ * 在各自命名空间内创建同 id 记录。
+ */
+export async function personBelongsToUser(
+  userId: UserId,
+  personId: PersonId,
+): Promise<boolean> {
+  return (await getCloudPerson(userId, personId)) !== null;
+}
+
 export async function deleteCloudPerson(
   userId: UserId,
   personId: PersonId,
