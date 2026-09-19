@@ -44,8 +44,10 @@ export {
   baziSectionKeySchema,
   ziweiSectionKeySchema,
   liuyaoSectionKeySchema,
+  shareRequestBodySchema,
   BAZI_SECTION_KEYS,
   ZIWEI_SECTION_KEYS,
   LIUYAO_SECTION_KEYS,
   type StructuredReading,
+  type ShareRequestBody,
 } from "./reading";

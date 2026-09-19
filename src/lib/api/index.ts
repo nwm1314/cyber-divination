@@ -1,5 +1,4 @@
 export {
-  checkBodySize,
   parseViewMode,
   stripAuthorityInput,
   validateAuthoritativeBaziRequest,

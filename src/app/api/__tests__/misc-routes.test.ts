@@ -21,6 +21,7 @@ import { resetCloudLiuyaoStoreForTests } from "@/lib/storage/cloud-liuyao-store"
 import { resetCloudStoreForTests } from "@/lib/storage/cloud-store";
 import { resetUserStoreForTests } from "@/lib/auth/users";
 import { getMemoryRateLimiter, setRateLimiterForTests } from "@/lib/api/rate-limit";
+import { DEFAULT_MAX_BODY_BYTES } from "@/lib/api";
 import { createTestUser, makeRequest } from "@/test/api-helpers";
 
 import * as healthRoute from "@/app/api/health/route";
@@ -171,7 +172,7 @@ describe("POST /api/share · 鉴权 / 体量 / 限流", () => {
   });
 
   it("体量超限 → 413", async () => {
-    // MAX_BODY_BYTES = 200_000（validate.ts:20）
+    // 上限来自 parse-body.ts 的 DEFAULT_MAX_BODY_BYTES（全站唯一实现）
     const huge = "x".repeat(250_000);
     const res = await shareRoute.POST(
       makeRequest("/api/share", {
@@ -181,6 +182,39 @@ describe("POST /api/share · 鉴权 / 体量 / 限流", () => {
       }),
     );
     expect(res.status).toBe(413);
+  });
+
+  /**
+   * B1：share 曾走手工 `request.text()` + `checkBodySize(raw.length)`，
+   * 按 UTF-16 字符计数，CJK 请求体实际可达约 3 倍字节；
+   * 统一走 parseJsonBody 后与其余写路由按 UTF-8 字节同源限流。
+   */
+  it("CJK 请求体按 UTF-8 字节判超限 → 413", async () => {
+    const cjkPad = "命".repeat(70_000); // 210_000 字节 > 200_000，但仅 70_000 字符
+    expect(new TextEncoder().encode(cjkPad).byteLength).toBeGreaterThan(
+      DEFAULT_MAX_BODY_BYTES,
+    );
+    const res = await shareRoute.POST(
+      makeRequest("/api/share", {
+        method: "POST",
+        token,
+        body: { kind: "bazi", chart: { pad: cjkPad }, report: {} },
+      }),
+    );
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { error?: { message?: string } };
+    expect(body.error?.message).toContain("请求体过大");
+  });
+
+  it("外壳字段类型错误 → 400（不再静默接受）", async () => {
+    const res = await shareRoute.POST(
+      makeRequest("/api/share", {
+        method: "POST",
+        token,
+        body: { kind: "bazi", chart: {}, report: {}, maskName: "yes" },
+      }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("非法 JSON → 400", async () => {

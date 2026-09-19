@@ -17,15 +17,6 @@ import {
   stripAuthorityInput,
 } from "@/lib/bazi";
 
-const MAX_BODY_BYTES = 200_000;
-
-export function checkBodySize(raw: string): string | null {
-  if (raw.length > MAX_BODY_BYTES) {
-    return `请求体过大（>${MAX_BODY_BYTES} 字节）`;
-  }
-  return null;
-}
-
 export type AuthoritativeBaziRequest = {
   chart: BaziChart;
   profile: BirthProfile;

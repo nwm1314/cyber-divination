@@ -56,3 +56,21 @@ export type StructuredReading = z.infer<typeof structuredReadingSchema>;
 export const BAZI_SECTION_KEYS = baziSectionKeySchema.options;
 export const ZIWEI_SECTION_KEYS = ziweiSectionKeySchema.options;
 export const LIUYAO_SECTION_KEYS = liuyaoSectionKeySchema.options;
+
+/**
+ * POST /api/share 请求体外壳（B1）
+ *
+ * 只约束「外壳」：chart / report 的术数结构由服务端既有
+ * `validateChartPayload` / `validateZiweiChartPayload` /
+ * `validateLiuyaoChartPayload` 逐字段核验（需要按 kind 分支，
+ * 且错误文案面向用户），此处不重复实现，避免两套校验漂移。
+ */
+export const shareRequestBodySchema = z.object({
+  kind: z.string().max(16).optional(),
+  chart: z.unknown().optional(),
+  report: z.unknown().optional(),
+  chartName: z.string().max(200).optional(),
+  maskName: z.boolean().optional(),
+});
+
+export type ShareRequestBody = z.infer<typeof shareRequestBodySchema>;

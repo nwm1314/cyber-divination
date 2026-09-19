@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import type {
-  LiuyaoReadingReport,
   LiuyaoShareSummary,
-  ReadingReport,
   ShareKind,
   ShareSnapshot,
-  ZiweiReadingReport,
   ZiweiShareSummary,
 } from "@/lib/types";
 import { ErrorCode } from "@/lib/types";
+import { shareRequestBodySchema } from "@/lib/contracts";
 import {
   extractShareMottoFromSections,
   MOTTO_FALLBACK,
@@ -18,10 +16,10 @@ import {
 import { SESSION_COOKIE_NAME, sessionFromToken } from "@/lib/auth/session";
 import {
   assertSameOrigin,
-  checkBodySize,
   checkRateLimit,
   clientKeyFromRequest,
   logApi,
+  parseJsonBody,
   rateLimitResponseHeaders,
   requestIdHeader,
   resolveRequestId,
@@ -29,6 +27,22 @@ import {
   validateLiuyaoChartPayload,
   validateZiweiChartPayload,
 } from "@/lib/api";
+
+/**
+ * 外壳字段已由 `shareRequestBodySchema` 收窄；chart / report 的内部结构
+ * 仍按 kind 分支交给 validate*ChartPayload 逐字段核验（面向用户的中文文案）。
+ */
+type ShareRequestPayload = {
+  kind?: string;
+  chart?: unknown;
+  report?: {
+    kind?: string;
+    disclaimer?: string;
+    sections?: { key: string; title?: string; body?: string }[];
+  };
+  chartName?: string;
+  maskName?: boolean;
+};
 
 function maskName(name: string): string {
   const t = name.trim();
@@ -146,47 +160,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const raw = await request.text();
-    const sizeErr = checkBodySize(raw);
-    if (sizeErr) {
+    const parsed = await parseJsonBody(request, shareRequestBodySchema);
+    if (!parsed.ok) {
       logApi("warn", "api.share.reject", {
         requestId,
         route: "/api/share",
-        status: 413,
+        status: parsed.status,
         durationMs: Date.now() - started,
         clientKey,
         errorCode: ErrorCode.INVALID_PROFILE,
-        message: sizeErr,
+        message: parsed.message,
       });
       return NextResponse.json(
-        { error: { code: ErrorCode.INVALID_PROFILE, message: sizeErr } },
-        { status: 413, headers: rid },
+        { error: { code: ErrorCode.INVALID_PROFILE, message: parsed.message } },
+        { status: parsed.status, headers: rid },
       );
     }
-
-    let body: {
-      kind?: ShareKind;
-      chart?: unknown;
-      report?:
-        | Partial<ReadingReport>
-        | Partial<ZiweiReadingReport>
-        | Partial<LiuyaoReadingReport>;
-      chartName?: string;
-      maskName?: boolean;
-    };
-    try {
-      body = JSON.parse(raw);
-    } catch {
-      return NextResponse.json(
-        {
-          error: {
-            code: ErrorCode.INVALID_PROFILE,
-            message: "JSON 解析失败",
-          },
-        },
-        { status: 400, headers: rid },
-      );
-    }
+    const body = parsed.data as ShareRequestPayload;
 
     const reportKind = (body.report as { kind?: string } | undefined)?.kind;
     const kind: ShareKind =
