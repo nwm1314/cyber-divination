@@ -648,12 +648,14 @@ sudo systemctl reload caddy
 
 | 响应头 | 基线 | 目的 / 兼容性说明 |
 |---|---|---|
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | 浏览器资源默认只允许本站；`unsafe-inline` 是当前 Next 客户端启动、Tailwind 内联样式和打印导出的必要兼容项。开发模式额外加入 `unsafe-eval`，生产不加入。 |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | 浏览器资源默认只允许本站。`unsafe-inline` **仍是必需的**，但两个指令的原因不同，且都经过实测（B3）：script 侧是 Next 在 `cacheComponents` 下按响应内联的 RSC flight payload（去掉后首页 9 条内联脚本被拒、页面不水合，且每条哈希都不同，故构建期哈希/SRI 无效）；style 侧是 `WuxingBars.tsx` / `PalaceGrid.tsx` 按数据生成的内联 `style` 属性。开发模式额外加入 `unsafe-eval`，生产不加入。 |
 | `X-Content-Type-Options` | `nosniff` | 禁止 MIME 嗅探。 |
 | `X-Frame-Options` | `DENY` | 与 CSP `frame-ancestors 'none'` 一起防点击劫持。 |
 | `X-XSS-Protection` | `0` | 关闭过时的浏览器 XSS filter，由 CSP 负责防护。 |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | 跨站只发送来源域名。 |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | 禁用当前产品不需要的设备能力。 |
+
+**为什么不用 nonce（B3 结论）**：Next 16 文档明确 nonce 与 PPR 互斥（静态外壳拿不到 nonce），改用 nonce 必须全站转动态渲染，会推翻 P0-04「静态路由 17 条」的成果。该取舍已由门禁固化为**双向不变量**：`npm run check:csp` 在构建后比对产物内联脚本数与 CSP 策略，一旦 Next 不再内联脚本而策略仍留 `unsafe-inline`，门禁会要求收紧（style 侧另有 `src/lib/__verify__/csp-inline-necessity.test.ts`）。
 
 外部资源和核心流程的核对结果：
 

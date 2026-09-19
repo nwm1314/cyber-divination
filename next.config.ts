@@ -6,6 +6,22 @@ const HSTS_VALUE = "max-age=63072000; includeSubDomains; preload";
  * Keep the browser policy deliberately self-hosted. The browser talks only to
  * same-origin route handlers; the LLM, mail provider, and OG font fetches are
  * server-to-server connections and do not belong in connect-src.
+ *
+ * ## 为什么 script-src / style-src 仍带 'unsafe-inline'（B3，实测结论）
+ * Next.js 16 在 `cacheComponents`（PPR）下会为**每个响应**生成内联脚本：
+ * RSC flight payload（`self.__next_f.push([...])`）与 `$RT/$RV` 引导码。
+ * 实测（16.2.10 生产 standalone）把 script-src 收紧为 `'self'` 后，首页控制台
+ * 出现 9 条 "Refused to execute inline script"，且浏览器建议的 sha256 **每条都不同**
+ * → 构建期哈希 / SRI 走不通。nonce 也不可行：Next 官方文档
+ * `01-app/02-guides/content-security-policy.md` 明确 nonce 与 PPR 互斥
+ * （静态外壳拿不到 nonce），改用 nonce 等于全站动态渲染，会推翻 P0-04 并让
+ * `check:prerender` 门禁失败。
+ * style-src 的原因是另一类：src 下的动态内联样式（`WuxingBars.tsx`、
+ * `PalaceGrid.tsx` 按数据算宽度/格位）。
+ *
+ * 该结论不是「写完就忘」：`npm run check:csp`（构建后）与
+ * `src/lib/__verify__/csp-inline-necessity.test.ts` 把它固化为双向不变量 ——
+ * 一旦产物不再含内联脚本、或源码不再用内联样式，门禁会**要求**收紧。
  */
 export function getContentSecurityPolicy(
   isDevelopment = process.env.NODE_ENV === "development",

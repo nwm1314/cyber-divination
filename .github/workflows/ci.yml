@@ -56,6 +56,10 @@ jobs:
       - name: Verify prerender budget (static routes >= 15)
         run: npm run check:prerender
 
+      # B3：CSP 的 script-src 必须与构建产物的内联脚本状况一致（双向不变量）
+      - name: Verify CSP matches inline-script state of build output
+        run: npm run check:csp
+
       # P2 A6 修复：此前 check:prod-env 在非 production 下静默跳过，
       # 且 CI 从未调用它 → 生产配置错误无法在合并前暴露。
       # 这里显式以 production 模式运行，并补一份「合规样例环境」，
