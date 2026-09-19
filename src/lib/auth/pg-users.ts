@@ -2,6 +2,7 @@
  * Postgres 用户表（T221 / T222）
  */
 
+import "server-only";
 import { createHash, randomUUID } from "crypto";
 import type { User, UserId } from "@/lib/types/user";
 import { ensureSchema, getSql } from "@/lib/db";

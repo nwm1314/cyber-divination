@@ -2,6 +2,7 @@
  * 服务端读取当前会话（Route Handler / Server Component）
  */
 
+import "server-only";
 import { cookies } from "next/headers";
 import type { AppSession } from "@/lib/types/user";
 import {

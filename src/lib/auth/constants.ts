@@ -1,5 +1,8 @@
 /** 会话 Cookie 与默认 TTL（T81） */
 
+// 本模块含签名密钥回退值（DEV_AUTH_SECRET_FALLBACK），不得进入客户端 bundle。
+import "server-only";
+
 /** HTTP-only 会话 Cookie 名 */
 export const SESSION_COOKIE_NAME = "cyber_session" as const;
 
