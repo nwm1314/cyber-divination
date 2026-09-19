@@ -106,8 +106,8 @@ jobs:
           fi
           echo "OK: 缺少 DB_SKIP_ENSURE_SCHEMA 时 fail-fast"
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run browser smoke and security flows
         run: npm run test:e2e
