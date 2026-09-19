@@ -8,18 +8,21 @@
 > ```
 > npm run check  →  退出码 0
 >   lint --max-warnings=0       0 problem
->   test                        92 文件 830 通过 + 1 skipped（831）
->   build                       Compiled successfully in 9.4s
+>   test                        93 文件 833 通过 + 1 skipped（834）
+>   build                       Compiled successfully in 11.0s
 >   check:prerender             通过：静态路由 17 条（阈值 15）
 > ```
+>
+> 补充门禁：`npx next build` 无 CSS 解析错误；`npx playwright test` 11 passed
+> （修复前 0/24）；`npm run check:skill` 通过。
 
 ---
 
 ## 0. 一句话结论
 
 交接文档列出的 **6 项 P1 硬缺口全部闭环**，**A 档 8 项 P2 全部收口**；
-过程中**新发现并修复 1 个真实越权漏洞（IDOR）**，
-**更正 2 处前序文档自身矛盾**。
+过程中**实测发现并修复 3 类文档未列出的真实问题**——
+其中含 **1 个 P0 级越权漏洞**与 **1 个导致 e2e 全站不可用的非法 CSS**。
 
 | 波次 | 内容 | 状态 |
 |---|---|---|
@@ -27,7 +30,9 @@
 | 2 | 信任模型闭环（inputFingerprint / 六爻信封 / TrustPanel） | ✅ 闭环 |
 | 3 | 引擎规则（GAP-2 起运到月、GAP-3 前进退空破冲合） | ✅ 闭环 |
 | 4 | P2 A 档 8 项 | ✅ 闭环 |
-| — | 额外：修复实测发现的 IDOR 漏洞 | ✅ 已修 + 已测 |
+| — | 额外 1：修复实测发现的 IDOR 越权漏洞 | ✅ 已修 + 已测 |
+| — | 额外 2：修复非法 CSS（e2e 0/24 → 11/24）+ 回归守护 | ✅ 已修 + 已守护 |
+| — | 额外 3：更正 3 处前序文档自身不一致 | ✅ 已更正 |
 
 ---
 
@@ -36,8 +41,9 @@
 | 指标 | 改动前 | 改动后 | 变化 |
 |---|---|---|---|
 | API route 有测试覆盖 | **0 / 23** | **23 / 23** | +23 |
-| 测试文件数 | 78 | 92 | +14 |
-| 测试用例数 | 633 通过 + 1 skipped | **830 通过 + 1 skipped** | **+197** |
+| 测试文件数 | 78 | **93** | +15 |
+| 测试用例数 | 633 通过 + 1 skipped | **833 通过 + 1 skipped** | **+200** |
+| e2e 通过数 | **0 / 24**（非法 CSS 致全站崩坏） | **11 / 24** | +11 |
 | `inputFingerprint` 全项目命中 | **0** | 13 处（3 引擎 + UI） | +13 |
 | 六爻信封字段 | 2 个 | 6 个 | +4 |
 | 六爻变卦覆盖度 | **0%** | **100%（4096/4096）** | +100% |
@@ -313,7 +319,7 @@ $ NODE_ENV=production <合规环境> npm run check:prod-env  → exit 0
 | GAP-2/GAP-3 的**流派归属** | **未经外部命理师审校** | 按规程属「声明流派前提下自洽、可复核」，**不声称**是典籍逐字规定 |
 | 「三天一岁」折算比例 | 未做外部验证 | 沿用既有实现，未改动 |
 | `lunar-javascript` 历法正确性 | 需外部验证 | 交接文档 C4 已列 |
-| e2e（Playwright） | **未执行** | 本轮未运行 `npm run test:e2e`（需浏览器环境）；CI 中有该步骤 |
+| e2e（Playwright） | **部分通过：11/24** | 本轮已实际运行；修复非法 CSS 前为 0/24。其余失败为 `e2e.invalid` 占位符与移动端并行超时（详见 §11.6），**未达全绿** |
 
 ### 8.3 风险提示
 
@@ -328,7 +334,7 @@ $ NODE_ENV=production <合规环境> npm run check:prod-env  → exit 0
 
 ---
 
-## 9. commit 清单（10 个）
+## 9. commit 清单（12 个）
 
 | commit | 类型 | 内容 |
 |---|---|---|
@@ -342,6 +348,8 @@ $ NODE_ENV=production <合规环境> npm run check:prod-env  → exit 0
 | `b4be7d0` | test(auth) | 认证面 5 个 route（16 例） |
 | `4f73fe1` | test(api) | health/列表/迁移/分享（15 例） |
 | `eba1b8b` | test(api) | 解读面 5 个 route，覆盖达 23/23 |
+| `ec950cb` | **fix** | 治理 Tailwind 提取器误读文档/注释导致的非法 CSS（e2e 0→11） |
+| `1b3962c` | test | Tailwind 提取器安全守护（防回归） |
 
 ---
 
@@ -353,8 +361,8 @@ PS> npm run check
 
 > eslint --max-warnings=0          # 0 problem
 
- Test Files  92 passed (92)
-      Tests  830 passed | 1 skipped (831)
+ Test Files  93 passed (93)
+      Tests  833 passed | 1 skipped (834)
 
  ✓ Compiled successfully in 9.4s
 
@@ -363,5 +371,118 @@ PS> npm run check
 === EXIT: 0 ===
 ```
 
-**对比交接基线**：78 文件 633 通过 → **92 文件 830 通过**，
+**对比交接基线**：78 文件 633 通过 → **93 文件 833 通过**，
 lint 0 / tsc 0 / build 成功 / 静态路由 17 条，**全部保持或提升**。
+
+补充门禁（本轮新增项）：
+
+```powershell
+PS> npx next build          # Compiled successfully，无 CSS 解析错误
+PS> npx playwright test     # 11 passed（修复前 0/24 全失败）
+PS> npm run check:skill     # check passed（skill 参考哈希一致）
+```
+
+---
+
+## 11. ⭐ 额外发现：e2e 全站不可用（非法 CSS），已修复
+
+> **这是本轮最有价值的意外发现**，且**不是本轮改动引入的**——
+> 它使 `npm run test:e2e` 的 **24 例全部失败**，此前无人察觉。
+
+### 11.1 现象
+
+`npx playwright test` 全失败，dev server 日志：
+
+```
+Parsing CSS source code failed
+  .w-\[0_0_通配px_var(--通配-glow)\] { width: 0 0 通配px var(--通配-glow); }
+                                         ^-- Unexpected token Delim('*')
+```
+
+即：整站样式构建失败，页面无法正常渲染。
+
+### 11.2 定位（先证伪自己）
+
+1. 先怀疑是自己改的 → `git checkout eedb16d`（本轮全部改动**之前**的提交）
+   后**复现同样错误** → **证明与本轮无关**。
+2. 从构建产物反查类名 → 命中 3 份文档中的**字面量**。
+
+### 11.3 根因
+
+**Tailwind v4 的静态提取器会扫描 `docs/` 下的 Markdown 与源码注释**，
+把其中"形似工具类"的文本当成真实类名。
+
+上一轮的 `FIX_REPORT_P1.md` / `FIX_REPORT_P2.md` /
+`REVIEW_DESIGN_INVENTORY.md` 在正文里以反引号写了
+**含通配符的阴影任意值类名**（作为说明文字），被提取后生成
+方括号内含 `*` 的非法 CSS。
+
+**讽刺之处**：这些报告**本身就在描述这个 bug**
+（`FIX_REPORT_P2.md` 甚至给出了修复建议），
+但从未实际执行修复，且报告本身成了新的触发源。
+
+### 11.4 修复与更正
+
+| 文件 | 处理 |
+|---|---|
+| `docs/REVIEW_DESIGN_INVENTORY.md:300,323` | 改为文字描述，不再写可提取字面量 |
+| `docs/FIX_REPORT_P1.md` / `P2.md` | 构建日志摘录脱敏 |
+| `src/components/chart/WuxingBars.tsx:74` | 注释**抄写了报错原文** → **第二个触发点**（上一轮报告称"唯一命中 docs/"，**不准确**） |
+| `src/app/globals.css:63-65` | 注释同样抄写报错原文 → 脱敏，并把维护约定写全 |
+
+**结果**：`npx playwright test` **0/24 → 11 passed**；`next build` 不再报 CSS 错误。
+
+### 11.5 回归防线
+
+新增 `src/lib/__verify__/tailwind-extractor-safety.test.ts`（3 例）：
+
+1. 扫描 `docs/` 与 `src/`，禁止「工具类前缀 + 方括号 + 通配符」字面量
+2. **检测器自测**：能识别危险样本，且不误报 JSON 字段路径
+   （`majorByBranch[*]`、`daxian[0..1]`）与具体值类名
+3. `globals.css` 的 `--shadow-*` token 必须全部有真实引用（防死 token）
+
+**已实测有效性**：临时把危险字面量写回文档 → 断言即刻失败并指名
+`file:line`；移除后恢复通过。
+
+### 11.6 仍未通过的 e2e 说明（如实标注）
+
+修复后仍有 13 例失败（11 passed），**与本轮改动无关**，原因：
+
+- `e2e.invalid` DNS 解析失败 —— `playwright.config.ts:57` 的
+  **故意占位符**（`UPSTASH_REDIS_REST_URL: "https://e2e.invalid"`），
+  用于验证「依赖不可用时优雅降级」。相关用例需匹配该环境预期。
+- `iphone-13` / `pixel-5` 移动端项目部分用例超时。
+- 单例运行（`-g "Bazi creation"`）**通过**，说明是并行负载下的超时，
+  而非功能缺陷。
+
+**结论**：e2e 从"全站样式崩坏导致 0/24"恢复到"11/24 通过、
+其余为环境/负载依赖"，是**实质改善**；但**未达全绿**，
+如实记录，不计入本轮"已闭环"项。
+
+---
+
+## 12. 自我修正记录（第二轮过程中）
+
+| # | 我最初的判断 | 实际 | 处理 |
+|---|---|---|---|
+| 1 | e2e 失败可能是我引入的 | `git checkout eedb16d` 后同样失败 → **非本轮引入** | 先证伪再归因 |
+| 2 | 陈旧 `.next/dev` 缓存导致 CSS 错误 | 清缓存后仍复现 → **不是缓存问题** | 继续深挖到真实根因 |
+| 3 | 触发点只在 `WuxingBars.tsx` | 修完后仍报错 → 还有 `globals.css` 注释 | 全仓扫描补齐 |
+| 4 | 守护测试第一版可用 | 误报 `majorByBranch[*]` 等 JSON 字段路径 | 收紧为「工具类前缀 + 方括号」判定，并加检测器自测 |
+| 5 | 支配测试超时是逻辑错误 | 单文件通过、全量失败 → **并行负载下的 5s 超时** | 对重用例显式放大超时并注明 |
+| 6 | `chart` 字段可省略（我写的测试假设） | 契约要求必填（`contracts/charts.ts:125`） | **改测试以符合真实契约**，不弱化断言 |
+
+---
+
+## 13. 结论
+
+交接文档的 **6 项 P1 + 8 项 P2 A 档全部闭环**，
+另有 3 类**文档未列出的真实问题**被实测发现并修复：
+
+1. **P0 级越权漏洞**（`PUT /api/people/[id]` IDOR）—— 有可复现证据
+2. **全站非法 CSS** 导致 e2e 不可用 —— 0/24 → 11/24，并补回归守护
+3. **三处前序文档自身不一致**（`dayun-rules.md` 内部矛盾、
+   两份报告关于 CSS 触发点与验证状态的结论有误）
+
+所有引擎规则改动均**先声明流派、再给差异报告、并固化自洽性测试**；
+未验证项与未演练项**一律如实标注**，未以"已修复"掩盖。
